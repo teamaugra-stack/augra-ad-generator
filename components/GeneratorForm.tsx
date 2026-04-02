@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence, useInView } from "framer-motion";
 
 const AD_TYPES = [
@@ -38,6 +38,97 @@ const fadeInUp = {
   }),
 };
 
+/* ===== Custom Dropdown ===== */
+function CustomSelect({
+  value,
+  onChange,
+  options,
+  label,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  label: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const handleClickOutside = useCallback((e: MouseEvent) => {
+    if (ref.current && !ref.current.contains(e.target as Node)) {
+      setOpen(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [handleClickOutside]);
+
+  return (
+    <div ref={ref} className="relative">
+      <label className="label-style">{label}</label>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="input-style text-left flex items-center justify-between w-full"
+      >
+        <span>{value}</span>
+        <svg
+          className={`w-4 h-4 text-neutral-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M19 9l-7 7-7-7"
+          />
+        </svg>
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.96 }}
+            transition={{ duration: 0.15, ease: "easeOut" as const }}
+            className="absolute z-50 mt-2 w-full rounded-xl overflow-hidden border border-white/[0.1] bg-[#161616] backdrop-blur-xl shadow-2xl shadow-black/50"
+          >
+            {options.map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => {
+                  onChange(opt);
+                  setOpen(false);
+                }}
+                className={`w-full text-left px-4 py-3 text-sm transition-colors duration-150 ${
+                  opt === value
+                    ? "text-white bg-white/[0.08]"
+                    : "text-neutral-300 hover:text-white hover:bg-white/[0.05]"
+                }`}
+              >
+                {opt}
+                {opt === value && (
+                  <span className="float-right text-violet-400">
+                    <svg className="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </span>
+                )}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* ===== Main Form ===== */
 export default function GeneratorForm() {
   const [adType, setAdType] = useState(AD_TYPES[0]);
   const [procedure, setProcedure] = useState("");
@@ -52,16 +143,17 @@ export default function GeneratorForm() {
   const [showPrompt, setShowPrompt] = useState(false);
 
   const formRef = useRef<HTMLDivElement>(null);
-  const isInView = useInView(formRef, { once: true, margin: "-100px" });
+  const isInView = useInView(formRef, { once: true, margin: "-80px" });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!procedure.trim() || !keyMessage.trim()) return;
+
     setLoading(true);
     setError("");
     setResult(null);
     setLoadingMsgIdx(0);
 
-    // Cycle through loading messages
     const interval = setInterval(() => {
       setLoadingMsgIdx((prev) =>
         prev < LOADING_MESSAGES.length - 1 ? prev + 1 : prev
@@ -118,7 +210,7 @@ export default function GeneratorForm() {
   };
 
   return (
-    <div ref={formRef} className="w-full max-w-[680px] mx-auto">
+    <div ref={formRef} className="w-full max-w-[680px] mx-auto relative z-10">
       {/* Glassmorphism Card */}
       <motion.div
         initial={{ opacity: 0, y: 40 }}
@@ -132,34 +224,38 @@ export default function GeneratorForm() {
           initial="hidden"
           animate={isInView ? "visible" : "hidden"}
         >
-          <h2 className="text-xl font-semibold text-white mb-1 tracking-tight">
-            Create your ad
-          </h2>
-          <p className="text-sm text-neutral-500 mb-8">
+          <div className="flex items-center gap-3 mb-1">
+            {/* Sparkle icon */}
+            <svg
+              className="w-5 h-5 text-violet-400/70"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path d="M12 0L14.59 8.41L23 11L14.59 13.59L12 22L9.41 13.59L1 11L9.41 8.41L12 0Z" />
+            </svg>
+            <h2 className="text-xl font-semibold text-white tracking-tight">
+              Create your ad
+            </h2>
+          </div>
+          <p className="text-sm text-neutral-500 mb-8 pl-8">
             Fill in the details and we&apos;ll handle the rest.
           </p>
         </motion.div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Ad Type */}
+          {/* Ad Type — custom dropdown */}
           <motion.div
             custom={1}
             variants={fadeInUp}
             initial="hidden"
             animate={isInView ? "visible" : "hidden"}
           >
-            <label className="label-style">Ad Type</label>
-            <select
+            <CustomSelect
+              label="Ad Type"
               value={adType}
-              onChange={(e) => setAdType(e.target.value)}
-              className="input-style"
-            >
-              {AD_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
+              onChange={setAdType}
+              options={AD_TYPES}
+            />
           </motion.div>
 
           {/* Procedure or Service */}
@@ -198,25 +294,19 @@ export default function GeneratorForm() {
             />
           </motion.div>
 
-          {/* Output Format */}
+          {/* Output Format — custom dropdown */}
           <motion.div
             custom={4}
             variants={fadeInUp}
             initial="hidden"
             animate={isInView ? "visible" : "hidden"}
           >
-            <label className="label-style">Output Format</label>
-            <select
+            <CustomSelect
+              label="Output Format"
               value={outputFormat}
-              onChange={(e) => setOutputFormat(e.target.value)}
-              className="input-style"
-            >
-              {OUTPUT_FORMATS.map((f) => (
-                <option key={f} value={f}>
-                  {f}
-                </option>
-              ))}
-            </select>
+              onChange={setOutputFormat}
+              options={OUTPUT_FORMATS}
+            />
           </motion.div>
 
           {/* Brand Asset Note */}
@@ -245,6 +335,7 @@ export default function GeneratorForm() {
             variants={fadeInUp}
             initial="hidden"
             animate={isInView ? "visible" : "hidden"}
+            className="pt-2"
           >
             <button
               type="submit"
@@ -266,19 +357,20 @@ export default function GeneratorForm() {
               className="mt-8 overflow-hidden"
             >
               <div className="flex flex-col items-center gap-5 py-4">
-                {/* Animated progress bar */}
-                <div className="w-full h-1 bg-neutral-800 rounded-full overflow-hidden">
+                <div className="w-full h-1 bg-neutral-800/50 rounded-full overflow-hidden">
                   <div className="h-full loading-gradient rounded-full animate-loading-bar" />
                 </div>
-                <motion.p
-                  key={loadingMsgIdx}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="text-sm text-neutral-400"
-                >
-                  {LOADING_MESSAGES[loadingMsgIdx]}
-                </motion.p>
+                <AnimatePresence mode="wait">
+                  <motion.p
+                    key={loadingMsgIdx}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="text-sm text-neutral-400"
+                  >
+                    {LOADING_MESSAGES[loadingMsgIdx]}
+                  </motion.p>
+                </AnimatePresence>
               </div>
             </motion.div>
           )}
@@ -291,7 +383,7 @@ export default function GeneratorForm() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="mt-6 p-4 border border-red-900/30 bg-red-950/20 rounded-xl backdrop-blur-sm"
+              className="mt-6 p-4 border border-red-500/20 bg-red-500/[0.06] rounded-xl"
             >
               <p className="text-sm text-red-400">{error}</p>
             </motion.div>
@@ -310,12 +402,12 @@ export default function GeneratorForm() {
             className="mt-8 space-y-4"
           >
             <div className="relative group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-neutral-800 via-neutral-600 to-neutral-800 rounded-2xl opacity-30 group-hover:opacity-50 blur-lg transition-opacity duration-500" />
+              <div className="absolute -inset-2 bg-gradient-to-r from-violet-500/20 via-blue-500/10 to-rose-500/20 rounded-2xl opacity-0 group-hover:opacity-100 blur-2xl transition-opacity duration-700" />
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={result.imageUrl}
                 alt="Generated ad creative"
-                className="relative w-full rounded-xl"
+                className="relative w-full rounded-xl border border-white/[0.08]"
               />
             </div>
 
@@ -366,7 +458,7 @@ export default function GeneratorForm() {
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="mt-3 text-xs text-neutral-600 leading-relaxed overflow-hidden"
+                    className="mt-3 text-xs text-neutral-500 leading-relaxed overflow-hidden"
                   >
                     {result.prompt}
                   </motion.p>
