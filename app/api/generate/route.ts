@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     // Step 1: Generate image prompt via Claude
     const anthropic = new Anthropic();
     const message = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20241022",
+      model: "claude-sonnet-4-5-20250514",
       max_tokens: 1024,
       system: SYSTEM_PROMPT,
       messages: [
@@ -130,15 +130,8 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-    if (errMsg.includes("model") || errMsg.includes("not_found")) {
-      return NextResponse.json(
-        { error: "Model not available. Check your Anthropic API plan." },
-        { status: 500 }
-      );
-    }
-
     return NextResponse.json(
-      { error: "Something went wrong generating your creative. Try again." },
+      { error: `Generation failed: ${errMsg}` },
       { status: 500 }
     );
   }
