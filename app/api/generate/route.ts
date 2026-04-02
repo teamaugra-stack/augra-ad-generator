@@ -58,6 +58,9 @@ interface FalResult {
   images: { url: string }[];
 }
 
+// Allow up to 60s for Claude + FAL.ai generation (requires Vercel Pro for >10s)
+export const maxDuration = 60;
+
 export async function POST(request: NextRequest) {
   try {
     const { adType, procedure, keyMessage, outputFormat, brandAssetNote } =
@@ -117,7 +120,23 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ imageUrl, prompt: promptText });
   } catch (error) {
-    console.error("Generation error:", error);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error("Generation error:", errMsg);
+
+    // Surface specific known issues to help debug
+    if (errMsg.includes("authentication") || errMsg.includes("api_key") || errMsg.includes("401")) {
+      return NextResponse.json(
+        { error: "API key issue. Check your ANTHROPIC_API_KEY and FAL_KEY environment variables." },
+        { status: 500 }
+      );
+    }
+    if (errMsg.includes("model") || errMsg.includes("not_found")) {
+      return NextResponse.json(
+        { error: "Model not available. Check your Anthropic API plan." },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
       { error: "Something went wrong generating your creative. Try again." },
       { status: 500 }
