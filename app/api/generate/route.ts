@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     // Step 1: Generate image prompt via Claude
     const anthropic = new Anthropic();
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-5-20250514",
+      model: "claude-3-5-sonnet-latest",
       max_tokens: 1024,
       system: SYSTEM_PROMPT,
       messages: [
