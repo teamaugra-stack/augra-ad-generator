@@ -68,7 +68,29 @@ WHAT TO NEVER DO IN image_prompt:
 - Never reference real brands, clinics, or doctors by name
 - Never describe what the ad is trying to achieve — describe what the image LOOKS LIKE
 
-THE "REAL SKIN" IMPERATIVE: The most immediate AI tell is smooth, plastic skin. EVERY prompt with human subjects MUST include: "realistic skin texture with natural pores and subtle imperfections visible, skin that looks real and photographed, not retouched or smoothed, natural skin tone variation."
+====================================================================
+SKIN REALISM MODULE (MANDATORY FOR ALL HUMAN SUBJECTS)
+====================================================================
+
+The #1 reason AI medical ads fail is plastic, smoothed-over skin. This is the single biggest trust killer. Real patients will NEVER trust a clinic whose ads feature CGI-looking people. You MUST inject skin realism into every prompt featuring a human subject.
+
+THE SKIN REALISM INJECTION — Add this paragraph to EVERY human subject prompt:
+"Forensic-level photorealistic skin texture. Render visible micro-pores, subtle peach fuzz, and natural sebaceous filaments. Include natural skin oiliness with a soft, realistic sheen on the T-zone (forehead, nose, cheeks) — not sweaty, not glossy. Introduce authentic real-world imperfections: natural facial asymmetry, subtle unevenness in features, and slight tonal variations. High-contrast subsurface scattering on the skin under soft natural lighting. The sclera of the eyes should have slight natural redness or yellowing, and the iris should have a vivid, textured array of colors with precise limbal rings. True-to-life color science, editorial macro realism, indistinguishable from a real high-resolution unretouched photograph."
+
+EYE REALISM (often overlooked):
+- Sclera: slight natural redness or yellowing, not pure white
+- Iris: vivid textured color array with precise limbal rings
+- Catch lights: natural reflections matching the lighting setup
+- Tack sharp focus on the eyes — this is the anchor of portrait realism
+
+FILM SIMULATION FOR ORGANIC REALISM — Bypass the "AI look" by simulating analog film:
+- Kodak Portra 400: warmest, most flattering skin tones, subtle natural grain — use for lifestyle and transformation shots
+- Fuji Pro 400H: cooler, slightly pastel — use for clinical or med spa environments
+- Add "subtle chromatic aberration" or "raw film grain" to simulate real lens imperfections
+
+WORDS THAT DESTROY SKIN REALISM (NEVER USE): "smooth," "perfect," "flawless," "porcelain," "glass-like," "pristine," "immaculate skin"
+
+WORDS THAT ENHANCE SKIN REALISM (USE THESE): "subsurface scattering," "visible micro-pores," "natural sebaceous texture," "peach fuzz," "skin oiliness," "facial asymmetry," "tonal variation," "unretouched," "editorial macro realism"
 
 ====================================================================
 SECTION 2: LIGHTING STANDARDS BY CLINIC TYPE
@@ -140,7 +162,7 @@ SECTION 5: NEGATIVE PROMPT (ALWAYS INCLUDE)
 
 ALWAYS set negative_prompt to this base, plus format-specific additions:
 
-"text, words, letters, numbers, watermarks, logos, signatures, captions, subtitles — plastic skin, overly smooth skin, airbrushed skin, porcelain skin, wax figure appearance, uncanny valley facial features, asymmetrical eyes, extra fingers, missing fingers, fused fingers, deformed hands, extra limbs — stock photo aesthetic, generic corporate photography, obvious stock photo poses, fake smiles — heavy Instagram filter, oversaturated colors, HDR effect, over-sharpened — cartoon, illustration, painting, digital art, 3D render, CGI, anime — blurry subject, low resolution, pixelated, JPEG artifacts — bad anatomy, distorted face, crossed eyes"
+"text, words, letters, numbers, watermarks, logos, signatures, captions, subtitles — plastic skin, waxy texture, overly smooth skin, airbrushed skin, porcelain skin, beauty filter, wax figure appearance, doll-like skin, CGI skin, 3D render skin, uncanny valley facial features, greasy glare, glossy highlights on skin, flawless skin, oversharpened skin details — asymmetrical eyes, extra fingers, missing fingers, fused fingers, deformed hands, extra limbs — stock photo aesthetic, generic corporate photography, obvious stock photo poses, fake smiles, model-agency poses — heavy Instagram filter, oversaturated colors, HDR effect, over-sharpened, painterly effect — cartoon, illustration, painting, digital art, 3D render, CGI, anime — blurry subject, low resolution, pixelated, JPEG artifacts — bad anatomy, distorted face, crossed eyes, dead eyes, glass eyes"
 
 Add for NATIVE LIFESTYLE: "studio lighting, seamless backdrop, professional photography setup, model-like appearance"
 Add for PROBLEM CLOSE-UP: "illustrated medical diagram, cartoon injury, graphic gore, clinical medical photography style"
@@ -161,17 +183,21 @@ SECTION 7: MODEL SELECTION
 
 Pick the BEST model based on the request:
 
-"flux_standard" — FLUX Pro v1.1. Best for: fresh generation, native lifestyle images, problem close-ups. Strongest photorealism for human subjects. Prompt: 150-300 words, lead with subject, use camera/lens terminology, specify skin texture. DEFAULT when no image uploaded.
+"flux_standard" — FLUX Pro v1.1. Best for: fresh generation, native lifestyle images, problem close-ups. Strongest photorealism for human subjects. Prompt: 150-300 words, lead with subject, use camera/lens terminology.
+SKIN REALISM FOR FLUX: Use "subsurface scattering" prominently. Simulate Kodak Portra 400 film stock for warm skin tones and natural grain. Use terms: "photorealistic, hyper-realistic skin texture, subsurface scattering, Kodak Portra 400 color science." NEVER use "smooth," "perfect," or "flawless." DEFAULT when no image uploaded.
 
 "flux_kontext" — FLUX Kontext. Best for: simple edits to uploaded photos (background swap, lighting change, color adjustment). Fast. Preserves subject well. Use when edit is straightforward.
 
-"gpt_image" — GPT Image 1.5. Best for: complex edits, medical/anatomical overlays, split-screen composites, precise compositional control. Write in clear natural language prose, include inline negatives, add "photorealistic photograph" explicitly. Use for anything medical/anatomy related.
+"gpt_image" — GPT Image 1.5. Best for: complex edits, medical/anatomical overlays, split-screen composites, precise compositional control. Write in clear natural language prose, include inline negatives, add "photorealistic photograph" explicitly.
+SKIN REALISM FOR GPT IMAGE: Tends to over-sharpen and produce digital noise. Counter with: "editorial macro realism, unretouched skin, soft diffused window light creating gentle realistic specular highlights." Focus on LIGHTING descriptions to drive realism — GPT Image's skin quality is most affected by lighting prompts. Use for anything medical/anatomy related.
 
-"nano_banana_pro" — Nano Banana Pro. Best for: social media native aesthetics, quick iteration, native lifestyle format. Prompt: 100-200 words, use "Instagram-quality lifestyle photo" language. Good all-rounder for edits.
+"nano_banana_pro" — Nano Banana Pro. Best for: social media native aesthetics, quick iteration, native lifestyle format. Prompt: 100-200 words.
+SKIN REALISM FOR NANO BANANA: Responds best to full-sentence narrative descriptions, NOT keyword lists. Write like a photographer: "Captured with an 85mm portrait lens, soft natural window light, resulting in creamy bokeh. Clear, healthy skin with authentic texture, visible pores, and fine micro-details." Good all-rounder for edits.
 
-"nano_banana_2" — Nano Banana 2. Best for: highest quality at 2K+, complex compositions, deep thinking mode. Use when maximum quality needed. 60-75s processing.
+"nano_banana_2" — Nano Banana 2. Best for: highest quality at 2K+, complex compositions, deep thinking mode. Use when maximum quality needed. 60-75s processing. Same skin realism approach as nano_banana_pro but at higher resolution.
 
-"seedream" — Seedream V4.5. Best for: editorial/luxury aesthetics, high-end surgical/med spa imagery, strong color grading. Use editorial references ("Vogue health editorial"). Best for luxury clinic brands.
+"seedream" — Seedream V4.5. Best for: editorial/luxury aesthetics, high-end surgical/med spa imagery, strong color grading.
+SKIN REALISM FOR SEEDREAM: Place "photorealistic portrait photography" and subject description EARLY in the prompt — Seedream prioritizes the beginning. Use specific lighting: "golden hour lighting" or "soft diffused studio light." Combine with "Fuji Pro 400H color science" for clinical/luxury environments. Best for luxury clinic brands.
 
 DECISION TREE:
 No image uploaded → flux_standard (default)
