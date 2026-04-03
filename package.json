@@ -12,6 +12,7 @@
     "@anthropic-ai/sdk": "^0.82.0",
     "@fal-ai/serverless-client": "^0.15.0",
     "@fontsource/inter": "^5.2.8",
+    "@fontsource/playfair-display": "^5.2.8",
     "@resvg/resvg-js": "^2.6.2",
     "framer-motion": "^12.38.0",
     "next": "14.2.35",

@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence, useInView } from "framer-motion";
+import EditChat from "./EditChat";
+import type { AdLayout, AdCopyData } from "@/types/chat";
 
 const AD_TYPES = [
   "Plastic Surgery",
@@ -34,12 +36,9 @@ interface GenerationResult {
   imageUrl: string;
   bgImageUrl?: string;
   prompt: string;
-  adCopy?: {
-    headline: string;
-    subheadline: string;
-    cta: string;
-    offer: string;
-  };
+  adCopy?: AdCopyData;
+  layout?: AdLayout;
+  modelUsed?: string;
 }
 
 const fadeInUp = {
@@ -633,6 +632,41 @@ export default function GeneratorForm() {
               </AnimatePresence>
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Chat */}
+      <AnimatePresence>
+        {result && !loading && result.adCopy && result.layout && (
+          <EditChat
+            initialAdState={{
+              currentBgImageUrl: result.bgImageUrl || "",
+              adCopy: result.adCopy,
+              layout: result.layout,
+              imagePrompt: result.prompt,
+              modelUsed: result.modelUsed || "fal-ai/flux-pro/v1.1",
+              outputFormat,
+              originalInputs: {
+                adType,
+                procedure,
+                keyMessage,
+                brandAssetNote,
+              },
+            }}
+            onUpdate={(update) => {
+              setResult((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      imageUrl: update.imageUrl,
+                      bgImageUrl: update.bgImageUrl,
+                      adCopy: update.adCopy,
+                      layout: update.layout,
+                    }
+                  : prev
+              );
+            }}
+          />
         )}
       </AnimatePresence>
     </div>
