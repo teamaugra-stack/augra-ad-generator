@@ -5,7 +5,7 @@ import { motion, AnimatePresence, useInView } from "framer-motion";
 import EditChat from "./EditChat";
 import type { AdLayout, AdCopyData, ClientData } from "@/types/chat";
 
-const AD_TYPES = [
+const DEFAULT_AD_TYPES = [
   "Plastic Surgery",
   "Med Spa / Aesthetics",
   "Cosmetic Dentistry",
@@ -172,7 +172,10 @@ function buildClientContext(client: ClientData): string {
 }
 
 export default function GeneratorForm({ clientData }: { clientData?: ClientData | null }) {
-  const [adType, setAdType] = useState(AD_TYPES[0]);
+  const adTypes = clientData?.serviceCategories?.length
+    ? clientData.serviceCategories
+    : DEFAULT_AD_TYPES;
+  const [adType, setAdType] = useState(adTypes[0]);
   const [procedure, setProcedure] = useState("");
   const [keyMessage, setKeyMessage] = useState("");
   const [outputFormat, setOutputFormat] = useState(OUTPUT_FORMATS[0]);
@@ -190,6 +193,13 @@ export default function GeneratorForm({ clientData }: { clientData?: ClientData 
   const formRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isInView = useInView(formRef, { once: true, margin: "-80px" });
+
+  // Update adType when client data loads with specific categories
+  useEffect(() => {
+    if (clientData?.serviceCategories?.length) {
+      setAdType(clientData.serviceCategories[0]);
+    }
+  }, [clientData]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -338,7 +348,7 @@ export default function GeneratorForm({ clientData }: { clientData?: ClientData 
               label="Ad Category"
               value={adType}
               onChange={setAdType}
-              options={AD_TYPES}
+              options={adTypes}
             />
           </motion.div>
 

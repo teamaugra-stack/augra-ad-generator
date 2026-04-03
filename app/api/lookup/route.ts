@@ -2,6 +2,59 @@ import { NextRequest, NextResponse } from "next/server";
 
 const CLICKUP_LIST_ID = "901521864851";
 
+// Universal ad types that apply to any practice
+const UNIVERSAL_AD_TYPES = [
+  "Offer or Promotion",
+  "Authority / Doctor Positioning",
+  "Practice Branding",
+];
+
+/**
+ * Extract specific service categories from the client's services field
+ * and onboarding doc. Returns an array of ad-friendly category names.
+ */
+function extractServiceCategories(services: string, onboardingDoc: string): string[] {
+  const combined = `${services} ${onboardingDoc}`.toLowerCase();
+  const categories: string[] = [];
+
+  // Medical specialties detection
+  const patterns: [RegExp, string][] = [
+    [/orthop(a|e)dic|bone|joint|fracture|musculoskeletal/i, "Orthopedic Surgery"],
+    [/spine|spinal|back surgery|disc|vertebr/i, "Spine Surgery"],
+    [/sports medicine|acl|meniscus|rotator cuff|athletic/i, "Sports Medicine"],
+    [/trauma|fracture|emergency orthop/i, "Trauma Surgery"],
+    [/hand surgery|wrist|carpal/i, "Hand Surgery"],
+    [/pediatric orthop|children.*orthop/i, "Pediatric Orthopedics"],
+    [/regenerat|prp|platelet|stem cell/i, "Regenerative Medicine"],
+    [/hormone|trt|testosterone|anti.?aging|peptide/i, "Anti-Aging & Hormone Optimization"],
+    [/rhinoplast|nose|facial/i, "Facial Surgery"],
+    [/botox|filler|inject|dermal/i, "Injectables & Fillers"],
+    [/skin|dermat|laser|chemical peel|microneedl/i, "Skin Treatments"],
+    [/body.*sculpt|liposuction|tummy|abdominoplast/i, "Body Contouring"],
+    [/breast|augment|reduction|lift/i, "Breast Surgery"],
+    [/dental|veneer|teeth|smile|orthodon/i, "Cosmetic Dentistry"],
+    [/chiropract|adjustment|alignment/i, "Chiropractic Care"],
+    [/weight.*loss|ozempic|semaglutide|bariatric/i, "Weight Loss"],
+    [/iv.*therap|infusion|drip/i, "IV Therapy"],
+    [/hair.*restor|transplant|prp.*hair/i, "Hair Restoration"],
+    [/wellness|functional medicine|holistic/i, "Functional Medicine"],
+  ];
+
+  for (const [regex, label] of patterns) {
+    if (regex.test(combined) && !categories.includes(label)) {
+      categories.push(label);
+    }
+  }
+
+  // If nothing matched, use a generic "General Practice" category
+  if (categories.length === 0) {
+    categories.push("General Practice");
+  }
+
+  // Always append universal types
+  return [...categories, ...UNIVERSAL_AD_TYPES];
+}
+
 // Custom field IDs from the Client Database list
 const FIELD_IDS = {
   businessName: "04e8a8ed-fdc4-460e-8cd3-a7a6dfa18442",
@@ -120,6 +173,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Parse service categories from onboarding doc and services field
+    const serviceCategories = extractServiceCategories(services, onboardingDoc);
+
     return NextResponse.json({
       found: true,
       client: {
@@ -134,6 +190,7 @@ export async function GET(request: NextRequest) {
         wordsToAvoid,
         ideasToAvoid,
         onboardingDoc,
+        serviceCategories,
       },
     });
   } catch (error) {

@@ -31,6 +31,28 @@ function HomeContent() {
       .finally(() => setClientLoading(false));
   }, [searchParams]);
 
+  // Show full-page loading when looking up client
+  if (clientLoading) {
+    return (
+      <main className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center"
+        >
+          <div className="relative w-16 h-16 mx-auto mb-6">
+            <div className="absolute inset-0 border-2 border-violet-500/20 rounded-full" />
+            <div className="absolute inset-0 border-2 border-transparent border-t-violet-400 rounded-full animate-spin" />
+            <div className="absolute inset-2 border-2 border-transparent border-t-white/40 rounded-full animate-spin" style={{ animationDirection: "reverse", animationDuration: "1.5s" }} />
+          </div>
+          <p className="text-sm text-neutral-400 animate-pulse">
+            Loading your brand profile...
+          </p>
+        </motion.div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#0a0a0a] relative">
       {/* Hero Section */}
@@ -132,14 +154,7 @@ function HomeContent() {
           <div className="absolute top-[100px] left-[40%] w-[200px] h-[200px] bg-rose-500/[0.025] rounded-full blur-[90px]" />
         </div>
 
-        {/* Client loading/error states */}
-        {clientLoading && (
-          <div className="max-w-[680px] mx-auto mb-8 text-center">
-            <p className="text-sm text-neutral-400 animate-pulse">
-              Loading your brand profile...
-            </p>
-          </div>
-        )}
+        {/* Client error state */}
         {clientError && (
           <div className="max-w-[680px] mx-auto mb-8 p-4 rounded-xl bg-amber-500/[0.06] border border-amber-500/20 text-center">
             <p className="text-sm text-amber-400">{clientError}</p>

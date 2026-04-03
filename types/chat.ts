@@ -100,4 +100,5 @@ export interface ClientData {
   wordsToAvoid: string;
   ideasToAvoid: string;
   onboardingDoc: string;
+  serviceCategories?: string[];
 }
