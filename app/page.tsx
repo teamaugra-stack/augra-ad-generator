@@ -4,9 +4,11 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ClientData, AdCopyData, AdLayout } from "@/types/chat";
-import EditChat from "@/components/EditChat";
 import WelcomeScreen from "@/components/WelcomeScreen";
+import dynamic from "next/dynamic";
 import { getCategoryMeta, groupCategories } from "@/lib/category-meta";
+
+const AdCanvasEditor = dynamic(() => import("@/components/AdCanvasEditor"), { ssr: false });
 
 // ===== TYPES =====
 
@@ -245,12 +247,11 @@ function StepHeader({ stepNum, total, title, highlight, subtitle }: { stepNum: n
 
 // ===== RESULT VIEW =====
 
-function ResultView({ result, adState, onUpdate, onNewAd, clientName }: {
+function ResultView({ result, adState, onUpdate, onNewAd }: {
   result: GenerationResult;
   adState: { currentBgImageUrl: string; adCopy: AdCopyData; layout: AdLayout; imagePrompt: string; modelUsed: string; outputFormat: string; originalInputs: { adType: string; procedure: string; keyMessage: string; brandAssetNote: string } };
   onUpdate: (u: { imageUrl: string; bgImageUrl: string; adCopy: AdCopyData; layout: AdLayout }) => void;
   onNewAd: () => void;
-  clientName?: string;
 }) {
   const [editMode, setEditMode] = useState(false);
 
@@ -324,43 +325,28 @@ function ResultView({ result, adState, onUpdate, onNewAd, clientName }: {
     );
   }
 
-  // ===== EDIT MODE (Higgsfield-style) =====
+  // ===== EDIT MODE (Canvas Editor) =====
+  // Use the raw background image (without text overlay) for the canvas
+  // so users can position text themselves
+  const bgUrl = result.bgImageUrl && result.bgImageUrl !== "(embedded)" ? result.bgImageUrl : result.imageUrl;
+
   return (
-    <div className="flex flex-col h-[calc(100vh-60px)]">
-      {/* Top toolbar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.04]">
-        <button onClick={() => setEditMode(false)} className="text-xs text-neutral-500 hover:text-white transition-colors flex items-center gap-1 cursor-pointer">
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-          Back to Result
-        </button>
-        <div className="flex items-center gap-4">
-          <span className="text-[10px] text-neutral-600 font-mono uppercase tracking-wider">Edit Mode</span>
-          <button onClick={handleDownload} className="btn-next !px-5 !py-2 !text-xs !rounded-full !shadow-none">
-            Save & Download
-          </button>
-        </div>
-      </div>
-
-      {/* Image hero — takes most of the space */}
-      <div className="flex-1 flex items-center justify-center p-6 overflow-hidden">
-        <motion.div
-          key={result.imageUrl.slice(-20)}
-          initial={{ opacity: 0, scale: 0.97 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4 }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={result.imageUrl}
-            alt="Generated ad"
-            className="max-h-[55vh] w-auto rounded-xl border border-white/[0.08] shadow-2xl shadow-black/50"
-          />
-        </motion.div>
-      </div>
-
-      {/* Chat bar at bottom */}
-      <EditChat initialAdState={adState} clientName={clientName} onUpdate={onUpdate} />
-    </div>
+    <AdCanvasEditor
+      backgroundImageUrl={bgUrl}
+      adCopy={result.adCopy || { headline: "", subheadline: "", cta: "", offer: "" }}
+      accentColor={adState.layout?.accent_color || "#D4A574"}
+      onExport={(dataUrl) => {
+        // Update the result with the canvas export
+        onUpdate({
+          imageUrl: dataUrl,
+          bgImageUrl: result.bgImageUrl || "",
+          adCopy: result.adCopy || { headline: "", subheadline: "", cta: "", offer: "" },
+          layout: result.layout || adState.layout,
+        });
+        setEditMode(false);
+      }}
+      onBack={() => setEditMode(false)}
+    />
   );
 }
 
@@ -468,7 +454,6 @@ function AppContent() {
             adState={{ currentBgImageUrl: result.bgImageUrl || "", adCopy: result.adCopy || { headline: "", subheadline: "", cta: "", offer: "" }, layout: result.layout || {} as AdLayout, imagePrompt: result.prompt, modelUsed: result.modelUsed || "flux_standard", outputFormat, originalInputs: { adType, procedure, keyMessage, brandAssetNote } }}
             onUpdate={(u) => setResult((p) => p ? { ...p, imageUrl: u.imageUrl, bgImageUrl: u.bgImageUrl, adCopy: u.adCopy, layout: u.layout } : p)}
             onNewAd={handleNewAd}
-            clientName={clientData?.businessName}
           />
         </div>
       </div>

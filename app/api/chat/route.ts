@@ -126,11 +126,23 @@ Category: ${adState.originalInputs.adType}`;
     };
 
     try {
-      const cleaned = rawText.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      // Clean up common Claude formatting issues
+      let cleaned = rawText.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      // Try to extract JSON if there's text before/after it
+      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+      if (jsonMatch) cleaned = jsonMatch[0];
       parsed = JSON.parse(cleaned);
     } catch {
       console.error("Failed to parse chat response:", rawText);
-      return NextResponse.json({ error: "Failed to parse edit. Try rephrasing." }, { status: 500 });
+      // Fallback: return a text-only response with the raw reply
+      const { composited } = await compositeAdImage(adState.currentBgImageUrl, adState.adCopy, adState.layout, adState.outputFormat);
+      return NextResponse.json({
+        reply: rawText.slice(0, 200) || "I understood your request but had trouble formatting the response. Please try again.",
+        updatedImageUrl: composited,
+        updatedBgImageUrl: adState.currentBgImageUrl,
+        updatedAdCopy: adState.adCopy,
+        updatedLayout: adState.layout,
+      });
     }
 
     const updatedAdCopy = parsed.updated_ad_copy || adState.adCopy;

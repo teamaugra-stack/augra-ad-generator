@@ -81,9 +81,9 @@ function buildLayout(
   const offerFontSize = scale(18, w);
   const fontFamily = getFontFamily(layout.headline_style);
   const headlineText = layout.headline_style === "uppercase"
-    ? truncate(adCopy.headline.toUpperCase(), 60)
-    : truncate(adCopy.headline, 60);
-  const subText = truncate(adCopy.subheadline, 120);
+    ? truncate(adCopy.headline.toUpperCase(), 80)
+    : truncate(adCopy.headline, 80);
+  const subText = truncate(adCopy.subheadline, 200);
   const fontStyle = layout.headline_style === "italic" ? "italic" : "normal";
 
   // Common text shadow for readability
