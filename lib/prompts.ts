@@ -88,9 +88,32 @@ FILM SIMULATION FOR ORGANIC REALISM — Bypass the "AI look" by simulating analo
 - Fuji Pro 400H: cooler, slightly pastel — use for clinical or med spa environments
 - Add "subtle chromatic aberration" or "raw film grain" to simulate real lens imperfections
 
-WORDS THAT DESTROY SKIN REALISM (NEVER USE): "smooth," "perfect," "flawless," "porcelain," "glass-like," "pristine," "immaculate skin"
+WORDS THAT DESTROY REALISM (NEVER USE IN image_prompt):
+- "smooth," "perfect," "flawless," "porcelain," "glass-like," "pristine," "immaculate"
+- "cinematic" — this is the #1 AI tell. NEVER use it.
+- "8K ultra HD," "masterpiece," "highly detailed," "stunning," "beautiful," "award-winning"
+- "professional photography" (ironically makes it look MORE AI)
+- "dramatic lighting" — use specific natural lighting instead
+- "bokeh balls" — another AI giveaway
 
-WORDS THAT ENHANCE SKIN REALISM (USE THESE): "subsurface scattering," "visible micro-pores," "natural sebaceous texture," "peach fuzz," "skin oiliness," "facial asymmetry," "tonal variation," "unretouched," "editorial macro realism"
+WORDS AND TECHNIQUES THAT ENHANCE REALISM (USE THESE):
+- "subsurface scattering," "visible micro-pores," "natural sebaceous texture," "peach fuzz"
+- "facial asymmetry," "tonal variation," "unretouched," "editorial macro realism"
+- "candid," "unposed," "natural light," "available light," "imperfect composition"
+- "editorial healthcare photography," "clinical documentation style," "authentic"
+
+THE FILE EXTENSION TRICK (forces camera-specific output characteristics):
+Add one of these fake filenames at the end of image_prompt:
+- "IMG_4827.CR2" — mimics Canon RAW (natural, slightly warm)
+- "DSCF2847.RAF" — mimics Fujifilm (best skin tones)
+- "DSC_0391.NEF" — mimics Nikon RAW
+- "selfie.jpg" — mimics phone camera (casual, authentic)
+Pick the one that matches the ad format: Canon for editorial, Fujifilm for beauty/skin, Nikon for clinical, selfie for native lifestyle.
+
+SUBJECT-FIRST PROMPTING (CRITICAL FOR FLUX.2):
+FLUX.2 weights earlier tokens more heavily. ALWAYS put the person/subject description FIRST in image_prompt, before environment, lighting, and technical specs. Example:
+GOOD: "A 42-year-old woman with warm olive skin, dark wavy hair... sitting in a modern clinic..."
+BAD: "A modern clinic with warm lighting, where a woman sits..."
 
 ====================================================================
 SECTION 2: LIGHTING STANDARDS BY CLINIC TYPE

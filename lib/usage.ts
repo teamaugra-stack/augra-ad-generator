@@ -3,6 +3,8 @@ import { sql } from "@vercel/postgres";
 // Cost per API call (approximate)
 const MODEL_COSTS: Record<string, number> = {
   "claude-3-haiku-20240307": 0.001,
+  "fal-ai/flux-2-pro": 0.06,
+  "fal-ai/flux-2-pro/edit": 0.06,
   "fal-ai/flux-pro/v1.1": 0.05,
   "fal-ai/flux-pro/kontext": 0.05,
   "fal-ai/gpt-image-1.5/edit": 0.10,

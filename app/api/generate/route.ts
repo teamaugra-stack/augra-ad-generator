@@ -21,6 +21,15 @@ async function uploadToFal(base64: string): Promise<string> {
 }
 
 async function generateWithFluxStandard(prompt: string, imageSize: string): Promise<string> {
+  // Try FLUX.2 Pro first (better quality), fall back to FLUX 1.1
+  try {
+    const result = (await fal.run("fal-ai/flux-2-pro", {
+      input: { prompt, image_size: imageSize, num_images: 1 },
+    })) as FalResult;
+    if (result?.images?.[0]?.url) return result.images[0].url;
+  } catch {
+    // Fallback to FLUX 1.1
+  }
   const result = (await fal.run("fal-ai/flux-pro/v1.1", {
     input: { prompt, image_size: imageSize, num_images: 1, safety_tolerance: "2" },
   })) as FalResult;
