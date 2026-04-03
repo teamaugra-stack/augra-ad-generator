@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import * as fal from "@fal-ai/serverless-client";
 import { compositeAdImage, FORMAT_TO_SIZE } from "@/lib/compositing";
 import type { ChatMessage, AdState } from "@/types/chat";
@@ -121,24 +122,60 @@ Category: ${adState.originalInputs.adType}`;
       const imageSize = FORMAT_TO_SIZE[adState.outputFormat] || "square_hd";
 
       if (parsed.action_type === "image_edit" && adState.currentBgImageUrl) {
-        // Use Kontext to edit the existing background image
         const editInstruction = parsed.image_instruction || adState.imagePrompt;
-        const falResult = (await fal.run("fal-ai/flux-pro/kontext", {
-          input: {
-            image_url: adState.currentBgImageUrl,
-            prompt: editInstruction,
-            image_size: imageSize,
-            num_images: 1,
-          },
-        })) as FalResult;
-        bgImageUrl = falResult?.images?.[0]?.url || bgImageUrl;
+
+        // Use Kontext for simple edits, GPT Image for complex/medical edits
+        const isComplex = /anatom|medical|overlay|x-ray|inside|muscle|bone|inject|cross.?section|illustrat/i.test(editInstruction);
+
+        if (isComplex && process.env.OPENAI_API_KEY) {
+          // Fetch existing image and send to GPT Image for complex editing
+          try {
+            const imgRes = await fetch(adState.currentBgImageUrl);
+            const imgBuf = Buffer.from(await imgRes.arrayBuffer());
+            const imgB64 = imgBuf.toString("base64");
+            const imageFile = new File([Buffer.from(imgB64, "base64")], "input.png", { type: "image/png" });
+
+            const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+            const result = await openai.images.edit({
+              model: "gpt-image-1",
+              image: imageFile,
+              prompt: editInstruction,
+              size: "1024x1024",
+            });
+            if (result.data?.[0]?.b64_json) {
+              bgImageUrl = `data:image/png;base64,${result.data[0].b64_json}`;
+            } else {
+              bgImageUrl = result.data?.[0]?.url || bgImageUrl;
+            }
+          } catch (gptErr) {
+            console.error("GPT Image edit failed, falling back to Kontext:", gptErr);
+            const falResult = (await fal.run("fal-ai/flux-pro/kontext", {
+              input: { image_url: adState.currentBgImageUrl, prompt: editInstruction, image_size: imageSize, num_images: 1 },
+            })) as FalResult;
+            bgImageUrl = falResult?.images?.[0]?.url || bgImageUrl;
+          }
+        } else {
+          // Simple edit: use Kontext
+          const falResult = (await fal.run("fal-ai/flux-pro/kontext", {
+            input: { image_url: adState.currentBgImageUrl, prompt: editInstruction, image_size: imageSize, num_images: 1 },
+          })) as FalResult;
+          bgImageUrl = falResult?.images?.[0]?.url || bgImageUrl;
+        }
       } else {
-        // Full regen: generate fresh from new prompt
+        // Full regen: use Nano Banana for highest quality
         const prompt = parsed.new_image_prompt || adState.imagePrompt;
-        const falResult = (await fal.run("fal-ai/flux-pro/v1.1", {
-          input: { prompt, image_size: imageSize, num_images: 1, safety_tolerance: "2" },
-        })) as FalResult;
-        bgImageUrl = falResult?.images?.[0]?.url || bgImageUrl;
+        try {
+          const falResult = (await fal.run("fal-ai/nano-banana-pro", {
+            input: { prompt, image_size: imageSize },
+          })) as FalResult;
+          bgImageUrl = falResult?.images?.[0]?.url || bgImageUrl;
+        } catch {
+          // Fallback to FLUX
+          const falResult = (await fal.run("fal-ai/flux-pro/v1.1", {
+            input: { prompt, image_size: imageSize, num_images: 1, safety_tolerance: "2" },
+          })) as FalResult;
+          bgImageUrl = falResult?.images?.[0]?.url || bgImageUrl;
+        }
       }
     }
 
