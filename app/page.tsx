@@ -1,10 +1,36 @@
 "use client";
 
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import FloatingGallery from "@/components/FloatingGallery";
 import GeneratorForm from "@/components/GeneratorForm";
+import type { ClientData } from "@/types/chat";
 
-export default function Home() {
+function HomeContent() {
+  const searchParams = useSearchParams();
+  const [clientData, setClientData] = useState<ClientData | null>(null);
+  const [clientLoading, setClientLoading] = useState(false);
+  const [clientError, setClientError] = useState("");
+
+  useEffect(() => {
+    const company = searchParams.get("client");
+    if (!company) return;
+
+    setClientLoading(true);
+    fetch(`/api/lookup?company=${encodeURIComponent(company)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.found && data.client) {
+          setClientData(data.client);
+        } else {
+          setClientError(data.error || "Client not found.");
+        }
+      })
+      .catch(() => setClientError("Failed to load client data."))
+      .finally(() => setClientLoading(false));
+  }, [searchParams]);
+
   return (
     <main className="min-h-screen bg-[#0a0a0a] relative">
       {/* Hero Section */}
@@ -29,9 +55,20 @@ export default function Home() {
             transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
             className="text-lg md:text-xl text-neutral-400 mt-4 max-w-md mx-auto leading-relaxed"
           >
-            Premium ad creatives for medical
-            <br />
-            and aesthetic practices.
+            {clientData ? (
+              <>
+                Welcome back,{" "}
+                <span className="text-white font-medium">
+                  {clientData.businessName}
+                </span>
+              </>
+            ) : (
+              <>
+                Premium ad creatives for medical
+                <br />
+                and aesthetic practices.
+              </>
+            )}
           </motion.p>
 
           <motion.div
@@ -87,10 +124,7 @@ export default function Home() {
       <div className="h-32 section-divider" />
 
       {/* Generator Section */}
-      <section
-        id="generator"
-        className="relative py-24 px-4 noise-overlay"
-      >
+      <section id="generator" className="relative py-24 px-4 noise-overlay">
         {/* Ambient colored glows */}
         <div className="absolute top-[-100px] left-1/2 -translate-x-1/2 w-[800px] h-[500px] pointer-events-none">
           <div className="absolute top-0 left-[20%] w-[300px] h-[300px] bg-violet-500/[0.04] rounded-full blur-[100px]" />
@@ -98,8 +132,30 @@ export default function Home() {
           <div className="absolute top-[100px] left-[40%] w-[200px] h-[200px] bg-rose-500/[0.025] rounded-full blur-[90px]" />
         </div>
 
-        <GeneratorForm />
+        {/* Client loading/error states */}
+        {clientLoading && (
+          <div className="max-w-[680px] mx-auto mb-8 text-center">
+            <p className="text-sm text-neutral-400 animate-pulse">
+              Loading your brand profile...
+            </p>
+          </div>
+        )}
+        {clientError && (
+          <div className="max-w-[680px] mx-auto mb-8 p-4 rounded-xl bg-amber-500/[0.06] border border-amber-500/20 text-center">
+            <p className="text-sm text-amber-400">{clientError}</p>
+          </div>
+        )}
+
+        <GeneratorForm clientData={clientData} />
       </section>
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense>
+      <HomeContent />
+    </Suspense>
   );
 }

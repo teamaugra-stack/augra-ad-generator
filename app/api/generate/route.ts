@@ -92,6 +92,7 @@ export async function POST(request: NextRequest) {
     const {
       adType, procedure, keyMessage, outputFormat,
       brandAssetNote, referenceImageDescription, referenceImageBase64,
+      clientContext,
     } = await request.json();
 
     if (!adType || !procedure || !keyMessage || !outputFormat) {
@@ -107,6 +108,10 @@ Reference Image Provided: ${referenceImageBase64 ? "Yes" : "No"}`;
 
     if (referenceImageDescription) {
       userMessage += `\nReference Image Description: ${referenceImageDescription}`;
+    }
+
+    if (clientContext) {
+      userMessage += `\n\n${clientContext}`;
     }
 
     // Step 1: Claude generates ad copy + layout + model selection

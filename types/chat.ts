@@ -87,3 +87,17 @@ export interface ChatResponse {
   updatedAdCopy: AdCopyData;
   updatedLayout: AdLayout;
 }
+
+export interface ClientData {
+  name: string;
+  businessName: string;
+  brandTone: string;
+  services: string;
+  website: string;
+  logoUrl: string;
+  targetAudience: string;
+  objections: string;
+  wordsToAvoid: string;
+  ideasToAvoid: string;
+  onboardingDoc: string;
+}

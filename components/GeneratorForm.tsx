@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import EditChat from "./EditChat";
-import type { AdLayout, AdCopyData } from "@/types/chat";
+import type { AdLayout, AdCopyData, ClientData } from "@/types/chat";
 
 const AD_TYPES = [
   "Plastic Surgery",
@@ -151,7 +151,27 @@ function CustomSelect({
 }
 
 /* ===== Main Form ===== */
-export default function GeneratorForm() {
+function buildClientContext(client: ClientData): string {
+  const parts = [
+    `CLIENT BRAND PROFILE:`,
+    `Business: ${client.businessName}`,
+    `Contact: ${client.name}`,
+    client.brandTone ? `Brand Tone: ${client.brandTone}` : "",
+    client.services ? `Services: ${client.services}` : "",
+    client.website ? `Website: ${client.website}` : "",
+    client.targetAudience ? `Target Audience: ${client.targetAudience}` : "",
+    client.objections ? `Common Objections: ${client.objections}` : "",
+    client.wordsToAvoid && client.wordsToAvoid.toLowerCase() !== "none"
+      ? `Words to Avoid: ${client.wordsToAvoid}`
+      : "",
+    client.onboardingDoc
+      ? `\nFULL ONBOARDING DOCUMENT:\n${client.onboardingDoc}`
+      : "",
+  ];
+  return parts.filter(Boolean).join("\n");
+}
+
+export default function GeneratorForm({ clientData }: { clientData?: ClientData | null }) {
   const [adType, setAdType] = useState(AD_TYPES[0]);
   const [procedure, setProcedure] = useState("");
   const [keyMessage, setKeyMessage] = useState("");
@@ -222,6 +242,7 @@ export default function GeneratorForm() {
           brandAssetNote,
           referenceImageDescription: referenceImageDescription || undefined,
           referenceImageBase64,
+          clientContext: clientData ? buildClientContext(clientData) : undefined,
         }),
       });
 
@@ -285,12 +306,24 @@ export default function GeneratorForm() {
               <path d="M12 0L14.59 8.41L23 11L14.59 13.59L12 22L9.41 13.59L1 11L9.41 8.41L12 0Z" />
             </svg>
             <h2 className="text-xl font-semibold text-white tracking-tight">
-              Create your ad
+              {clientData ? `${clientData.businessName}` : "Create your ad"}
             </h2>
           </div>
           <p className="text-sm text-neutral-500 mb-8 pl-8">
-            Fill in the details and we&apos;ll generate your ad creative.
+            {clientData
+              ? "Your brand profile is loaded. Generate on-brand ad creatives."
+              : "Fill in the details and we\u0027ll generate your ad creative."}
           </p>
+          {clientData?.logoUrl && (
+            <div className="mb-6 pl-8">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={clientData.logoUrl}
+                alt={`${clientData.businessName} logo`}
+                className="h-10 w-auto object-contain opacity-70"
+              />
+            </div>
+          )}
         </motion.div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
