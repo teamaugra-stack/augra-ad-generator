@@ -249,52 +249,77 @@ function ResultView({
   };
 
   return (
-    <div className="grid lg:grid-cols-[1fr,400px] gap-6 max-w-6xl mx-auto">
-      {/* Image Panel */}
-      <div className="space-y-4">
-        <div className="relative group">
-          <div className="absolute -inset-1 bg-gradient-to-r from-violet-500/20 via-blue-500/10 to-violet-500/20 rounded-2xl opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500" />
+    <div className="flex flex-col h-[calc(100vh-60px)] max-w-5xl mx-auto">
+      {/* Top toolbar */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.04]">
+        <div className="flex items-center gap-3">
+          <button onClick={onNewAd} className="text-xs text-neutral-500 hover:text-white transition-colors flex items-center gap-1">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            New Ad
+          </button>
+          {result.adCopy && (
+            <span className="text-xs text-neutral-600 hidden md:inline">
+              {result.adCopy.headline}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={handleDownload} className="btn-primary py-2 px-5 rounded-full text-xs flex items-center gap-1.5">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Download
+          </button>
+          <button
+            onClick={() => setShowPrompt(!showPrompt)}
+            className="text-xs text-neutral-600 hover:text-neutral-400 transition-colors px-3 py-2"
+          >
+            {showPrompt ? "Hide" : "Info"}
+          </button>
+        </div>
+      </div>
+
+      {/* Image hero — centered, takes most of the space */}
+      <div className="flex-1 flex items-center justify-center p-6 overflow-hidden relative">
+        <motion.div
+          key={result.imageUrl.slice(-20)}
+          initial={{ opacity: 0, scale: 0.97 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4 }}
+          className="relative max-h-full"
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={result.imageUrl}
             alt="Generated ad"
-            className="relative w-full rounded-xl border border-white/[0.08]"
+            className="max-h-[60vh] w-auto rounded-xl border border-white/[0.08] shadow-2xl shadow-black/50"
           />
-        </div>
+        </motion.div>
 
-        <div className="flex gap-3">
-          <button onClick={handleDownload} className="flex-1 btn-primary py-3 rounded-xl text-sm flex items-center justify-center gap-2">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            Download
-          </button>
-          <button onClick={onNewAd} className="btn-secondary py-3 px-6 rounded-xl text-sm">
-            New Ad
-          </button>
-        </div>
-
-        {/* Ad Copy Details */}
-        {result.adCopy && (
-          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-2">
-            <p className="text-xs text-neutral-500 uppercase tracking-widest">Ad Copy</p>
-            <p className="text-sm text-white font-semibold">{result.adCopy.headline}</p>
-            <p className="text-xs text-neutral-400">{result.adCopy.subheadline}</p>
-            {result.adCopy.offer && <p className="text-xs text-violet-400">{result.adCopy.offer}</p>}
-            <p className="text-xs text-neutral-500">CTA: {result.adCopy.cta}</p>
-          </div>
-        )}
-
-        <button onClick={() => setShowPrompt(!showPrompt)} className="text-xs text-neutral-500 hover:text-neutral-400 transition-colors">
-          {showPrompt ? "Hide" : "Show"} prompt
-        </button>
-        {showPrompt && <p className="text-xs text-neutral-600 leading-relaxed">{result.prompt}</p>}
+        {/* Info panel overlay */}
+        <AnimatePresence>
+          {showPrompt && result.adCopy && (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="absolute right-6 top-6 w-72 p-4 rounded-xl bg-black/80 backdrop-blur-lg border border-white/[0.08] space-y-2"
+            >
+              <p className="text-[10px] text-neutral-500 uppercase tracking-widest">Ad Details</p>
+              <p className="text-sm text-white font-semibold">{result.adCopy.headline}</p>
+              <p className="text-xs text-neutral-400">{result.adCopy.subheadline}</p>
+              {result.adCopy.offer && <p className="text-xs text-violet-400">{result.adCopy.offer}</p>}
+              <p className="text-xs text-neutral-500">CTA: {result.adCopy.cta}</p>
+              <div className="pt-2 border-t border-white/[0.06]">
+                <p className="text-[10px] text-neutral-600 leading-relaxed">{result.prompt.slice(0, 200)}...</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Chat Panel */}
-      <div className="lg:sticky lg:top-4 lg:self-start">
-        <EditChat initialAdState={adState} onUpdate={onUpdate} />
-      </div>
+      {/* Chat input at bottom — like Higgsfield */}
+      <EditChat initialAdState={adState} onUpdate={onUpdate} />
     </div>
   );
 }
