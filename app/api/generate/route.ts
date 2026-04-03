@@ -14,12 +14,13 @@ You must respond with ONLY a valid JSON object — no markdown, no code fences, 
 
 REQUIRED JSON FORMAT:
 {
-  "image_prompt": "80-180 word background image description",
+  "image_prompt": "80-200 word background image description",
   "headline": "2-8 word headline",
   "subheadline": "5-20 word supporting text",
   "cta": "2-4 word call to action",
   "offer": "promotional text or empty string",
-  "model_selection": "standard or redux or edit",
+  "model_selection": "standard or edit",
+  "edit_instruction": "only when model_selection is edit — a concise instruction describing what to change about the uploaded image while keeping the rest",
   "layout": {
     "style": "editorial_top or centered_hero or bottom_heavy or split_left or minimal_center or full_overlay",
     "headline_position": "top-left or top-center or center or bottom-left or bottom-center",
@@ -35,50 +36,71 @@ REQUIRED JSON FORMAT:
   }
 }
 
-MODEL SELECTION RULES:
-- "standard": No reference image provided, or reference is just inspiration. Default choice.
-- "redux": Reference image provided and user wants to match its style/aesthetic/colors.
-- "edit": Reference image provided and user wants to modify/transform the actual image content (e.g. "edit this photo", "add effects to this face", "change the background of this image").
+MODEL SELECTION RULES — CRITICAL:
+- "standard": No reference image provided. Generate a fresh image from scratch using image_prompt. This is the default.
+- "edit": A reference image IS provided. The user has uploaded an actual image they want to USE, KEEP, or EDIT. Use the Kontext editing model which preserves the original image and applies targeted changes. Set edit_instruction to describe what to change (e.g. "change the background to a luxury clinic", "add dramatic blue lighting", "make the environment look more premium"). The edit_instruction should be specific about WHAT to change while emphasizing what to KEEP.
 
-LAYOUT DESIGN RULES — Be creative! Each ad should look DIFFERENT. Match the layout to the category and mood:
+IMPORTANT: If the user says anything like "use this image", "edit this", "keep the person", "change the background", "modify this photo", or uploads any reference image with intent to use it — ALWAYS select "edit". The image_prompt field is still used for standard generation. The edit_instruction field is used for the Kontext model.
 
-PLASTIC SURGERY: Use "centered_hero" or "minimal_center". Headline style "italic" or "mixed" with Playfair serif feel. Accent colors: dusty rose (#D4A574), champagne (#C9A96E), soft gold. CTA: "outline" or "underline". Decorative: "line_accent" or "corner_marks". Scrim: "vignette" or "full_overlay".
+=== PHOTOREALISTIC SKIN & FACE REALISM SKILL ===
 
-MED SPA / AESTHETICS: Use "editorial_top" or "split_left". Headline "mixed" case for elegance. Accent: rose gold (#B76E79), blush (#D4A0A0). CTA: "pill_white" or "underline". Decorative: "line_accent". Scrim: "top_gradient".
+When generating ANY prompt involving human faces or portraits, you MUST apply these realism techniques. This is the difference between fake-looking AI output and photorealistic commercial photography.
 
-COSMETIC DENTISTRY: Use "centered_hero" or "bottom_heavy". Bright headline color (#FFFFFF). Headline "uppercase" for clean modern feel. Accent: sky blue (#5BA4CF). CTA: "pill_white". Scrim: "bottom_gradient".
+SKIN PHYSICS — Always include 3-5 of these:
+- subsurface skin scattering, visible skin pores, fine skin texture, natural skin colour variation
+- translucent skin quality, warm undertones, skin luminosity, light diffusion through dermis
+- natural skin imperfections, subtle skin roughness, micro skin texture
 
-CHIROPRACTIC: Use "split_left" or "editorial_top". Bold uppercase headline. Accent: warm red (#C45B4A) or teal (#3A8C7E). CTA: "pill_white" or "outline". Scrim: "left_gradient" or "top_gradient".
+LIGHTING — Always specify a setup:
+- For clinical/premium: "soft diffused studio lighting, large octabox key light, subtle fill light, natural catch light in eyes, colour temperature 5500K"
+- For lifestyle: "golden hour natural light, directional window light, soft bokeh background, warm ambient fill"
+- For dramatic/masculine: "Rembrandt lighting, single key light at 45 degrees, deep shadow fill, specular highlight on cheekbones"
+- Universal: "accurate light falloff, physically accurate shadows, soft shadow transitions, realistic specular highlights"
 
-MEN'S HEALTH / TRT: Use "bottom_heavy" or "full_overlay". LARGE headline (4xl), aggressive uppercase. Accent: steel (#7A8B99) or gold (#C9A96E). CTA: "pill_dark" or "outline". Scrim: "bottom_gradient" or "full_overlay". Decorative: "none".
+LENS PHYSICS — Always include:
+- "85mm portrait lens" or "105mm telephoto" (NEVER wide angle for faces)
+- "shallow depth of field, f/1.8-f/2.8 aperture, background bokeh"
+- "shot on Canon EOS R5" or "Hasselblad medium format" or "Phase One"
+- "tack sharp eyes, sharp eyelashes, RAW photo aesthetic"
 
-WEIGHT LOSS: Use "editorial_top" or "centered_hero". Energetic, bright. Headline "uppercase". Accent: vibrant green (#5EA66B) or orange (#D4854A). CTA: "pill_white". Scrim: "top_gradient".
+NEGATIVE PROMPT TERMS — Always end image_prompt with:
+"Photorealistic, ultra high resolution, commercial advertising photography, subsurface skin scattering, visible skin pores, fine skin texture, tack sharp eyes, natural catch lights, RAW photo aesthetic. NOT: plastic skin, waxy skin, airbrushed skin, poreless skin, digital art, 3D render, CGI, illustration, oversaturated, symmetrical face, glass eyes, watermark, text, typography, logos."
 
-PEPTIDE / ANTI-AGING: Use "minimal_center" or "editorial_top". Clinical luxury. Headline "mixed" or "italic". Accent: teal (#3A8C8C) or slate blue (#5B7B94). CTA: "outline" or "underline". Decorative: "corner_marks" or "border_frame".
+=== LAYOUT DESIGN RULES ===
 
-OFFER / PROMOTION: Use "centered_hero" or "full_overlay". Big offer text, prominent CTA. Accent: gold (#C9A96E). CTA: "pill_white". Decorative: "border_frame". Headline can be the offer itself.
+Be creative! Each ad should look DIFFERENT. Match the layout to the category and mood:
 
-AUTHORITY / DOCTOR: Use "split_left" or "editorial_top". Professional, warm. Headline "mixed". Accent: navy (#2C3E6B) or gold. CTA: "underline" or "pill_dark". Scrim: "left_gradient".
+PLASTIC SURGERY: Use "centered_hero" or "minimal_center". Headline style "italic" or "mixed". Accent colors: dusty rose (#D4A574), champagne (#C9A96E). CTA: "outline" or "underline". Decorative: "line_accent" or "corner_marks". Scrim: "vignette" or "full_overlay".
 
-PRACTICE BRANDING: Use "minimal_center" or "centered_hero". Headline "italic" for elegance. Accent: champagne or sage (#7A9B7A). CTA: "underline". Decorative: "corner_marks". Scrim: "vignette".
+MED SPA / AESTHETICS: Use "editorial_top" or "split_left". Headline "mixed". Accent: rose gold (#B76E79), blush (#D4A0A0). CTA: "pill_white" or "underline". Decorative: "line_accent". Scrim: "top_gradient".
 
-VARY YOUR DESIGNS: Never use the same combination twice. Alternate between headline sizes, positions, CTA styles, and decorative elements. Each generation should feel like a unique creative from a different designer.
+COSMETIC DENTISTRY: Use "centered_hero" or "bottom_heavy". Headline "uppercase". Accent: sky blue (#5BA4CF). CTA: "pill_white". Scrim: "bottom_gradient".
 
-IMAGE PROMPT GUIDELINES:
-- Always end with: "Photorealistic, ultra high resolution, commercial advertising photography, no text or typography or words or letters, no watermarks, no logos."
-- Leave generous space for text overlay based on the layout style you chose.
-- Match the mood and color palette to the category.
+CHIROPRACTIC / ORTHOPEDIC: Use "split_left" or "editorial_top". Bold uppercase. Accent: warm red (#C45B4A) or teal (#3A8C7E). CTA: "pill_white" or "outline". Scrim: "left_gradient".
+
+MEN'S HEALTH / TRT: Use "bottom_heavy" or "full_overlay". LARGE headline (4xl), aggressive uppercase. Accent: steel (#7A8B99) or gold (#C9A96E). CTA: "pill_dark" or "outline". Scrim: "bottom_gradient". Decorative: "none".
+
+WEIGHT LOSS: Use "editorial_top" or "centered_hero". Headline "uppercase". Accent: green (#5EA66B) or orange (#D4854A). CTA: "pill_white". Scrim: "top_gradient".
+
+PEPTIDE / ANTI-AGING: Use "minimal_center" or "editorial_top". Headline "mixed" or "italic". Accent: teal (#3A8C8C) or slate blue (#5B7B94). CTA: "outline" or "underline". Decorative: "corner_marks".
+
+OFFER / PROMOTION: Use "centered_hero" or "full_overlay". Big offer text. Accent: gold (#C9A96E). CTA: "pill_white". Decorative: "border_frame".
+
+AUTHORITY / DOCTOR: Use "split_left" or "editorial_top". Headline "mixed". Accent: navy (#2C3E6B) or gold. CTA: "underline". Scrim: "left_gradient".
+
+PRACTICE BRANDING: Use "minimal_center". Headline "italic". Accent: champagne or sage (#7A9B7A). CTA: "underline". Decorative: "corner_marks". Scrim: "vignette".
+
+VARY YOUR DESIGNS. Each generation should feel unique.
 
 AD COPY GUIDELINES:
-- Headline: The scroll-stopping hook. Match tone to category.
-- Subheadline: Supporting context. Brief and punchy.
-- CTA: Direct action. "Book Now", "Learn More", "Free Consultation", etc.
-- Offer: Only if the user mentions a deal/discount. Otherwise empty string "".`;
+- Headline: The scroll-stopping hook.
+- Subheadline: Supporting context, brief and punchy.
+- CTA: Direct action.
+- Offer: Only if user mentions a deal/discount, otherwise empty string "".`;
 
 const MODEL_MAP: Record<string, string> = {
   standard: "fal-ai/flux-pro/v1.1",
-  redux: "fal-ai/flux-pro/v1.1/redux",
-  edit: "fal-ai/flux-kontext-pro",
+  edit: "fal-ai/flux-pro/kontext",
 };
 
 interface FalResult {
@@ -99,15 +121,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
     }
 
+    const hasImage = !!referenceImageBase64;
+
     let userMessage = `Ad Category: ${adType}
 Procedure/Service: ${procedure}
 Key Message & Context: ${keyMessage}
 Output Format: ${outputFormat}
 Brand Asset Note: ${brandAssetNote || "None"}
-Reference Image Provided: ${referenceImageBase64 ? "Yes" : "No"}`;
+Reference Image Provided: ${hasImage ? "Yes — the user has uploaded an image. Determine if they want to EDIT it or just use it as inspiration based on their description below." : "No"}`;
 
     if (referenceImageDescription) {
-      userMessage += `\nReference Image Description: ${referenceImageDescription}`;
+      userMessage += `\nWhat the user wants to do with the image: ${referenceImageDescription}`;
     }
 
     if (clientContext) {
@@ -128,7 +152,7 @@ Reference Image Provided: ${referenceImageBase64 ? "Yes" : "No"}`;
       return NextResponse.json({ error: "Failed to generate ad copy." }, { status: 500 });
     }
 
-    let parsed: GenerateResponse;
+    let parsed: GenerateResponse & { edit_instruction?: string };
     try {
       const cleaned = rawText.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
       parsed = JSON.parse(cleaned);
@@ -140,24 +164,42 @@ Reference Image Provided: ${referenceImageBase64 ? "Yes" : "No"}`;
     // Validate and apply defaults to layout
     const layout: AdLayout = { ...DEFAULT_LAYOUT, ...(parsed.layout || {}) };
 
-    // Step 2: Generate background image via FAL.ai
+    // Step 2: Generate or edit image via FAL.ai
     const modelKey = parsed.model_selection || "standard";
+    // Force "edit" if user uploaded an image and Claude picked edit
     const falModel = MODEL_MAP[modelKey] || MODEL_MAP.standard;
     const imageSize = FORMAT_TO_SIZE[outputFormat] || "square_hd";
 
-    const falInput: Record<string, unknown> = {
-      prompt: parsed.image_prompt,
-      image_size: imageSize,
-      num_images: 1,
-      safety_tolerance: "2",
-    };
+    let bgImageUrl: string;
 
-    if (referenceImageBase64 && (modelKey === "redux" || modelKey === "edit")) {
-      falInput.image_url = `data:image/jpeg;base64,${referenceImageBase64}`;
+    if (modelKey === "edit" && hasImage) {
+      // KONTEXT MODEL: Send the actual image + edit instruction
+      // The image is preserved and only the specified changes are applied
+      const editPrompt = parsed.edit_instruction || parsed.image_prompt;
+
+      const result = (await fal.run("fal-ai/flux-pro/kontext", {
+        input: {
+          image_url: `data:image/jpeg;base64,${referenceImageBase64}`,
+          prompt: editPrompt,
+          image_size: imageSize,
+          num_images: 1,
+        },
+      })) as FalResult;
+
+      bgImageUrl = result?.images?.[0]?.url || "";
+    } else {
+      // STANDARD MODEL: Generate fresh from prompt
+      const result = (await fal.run("fal-ai/flux-pro/v1.1", {
+        input: {
+          prompt: parsed.image_prompt,
+          image_size: imageSize,
+          num_images: 1,
+          safety_tolerance: "2",
+        },
+      })) as FalResult;
+
+      bgImageUrl = result?.images?.[0]?.url || "";
     }
-
-    const result = (await fal.run(falModel, { input: falInput })) as FalResult;
-    const bgImageUrl = result?.images?.[0]?.url;
 
     if (!bgImageUrl) {
       return NextResponse.json({ error: "Failed to generate image." }, { status: 500 });
@@ -176,7 +218,7 @@ Reference Image Provided: ${referenceImageBase64 ? "Yes" : "No"}`;
     return NextResponse.json({
       imageUrl: composited,
       bgImageUrl,
-      prompt: parsed.image_prompt,
+      prompt: modelKey === "edit" ? (parsed.edit_instruction || parsed.image_prompt) : parsed.image_prompt,
       adCopy,
       layout,
       modelUsed: falModel,

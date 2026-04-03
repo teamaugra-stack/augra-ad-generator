@@ -118,17 +118,28 @@ Category: ${adState.originalInputs.adType}`;
 
     // Handle image generation if needed
     if (parsed.action_type === "image_edit" || parsed.action_type === "full_regen") {
-      const prompt = parsed.action_type === "full_regen"
-        ? parsed.new_image_prompt || adState.imagePrompt
-        : parsed.image_instruction || adState.imagePrompt;
-
       const imageSize = FORMAT_TO_SIZE[adState.outputFormat] || "square_hd";
 
-      const falResult = (await fal.run("fal-ai/flux-pro/v1.1", {
-        input: { prompt, image_size: imageSize, num_images: 1, safety_tolerance: "2" },
-      })) as FalResult;
-
-      bgImageUrl = falResult?.images?.[0]?.url || bgImageUrl;
+      if (parsed.action_type === "image_edit" && adState.currentBgImageUrl) {
+        // Use Kontext to edit the existing background image
+        const editInstruction = parsed.image_instruction || adState.imagePrompt;
+        const falResult = (await fal.run("fal-ai/flux-pro/kontext", {
+          input: {
+            image_url: adState.currentBgImageUrl,
+            prompt: editInstruction,
+            image_size: imageSize,
+            num_images: 1,
+          },
+        })) as FalResult;
+        bgImageUrl = falResult?.images?.[0]?.url || bgImageUrl;
+      } else {
+        // Full regen: generate fresh from new prompt
+        const prompt = parsed.new_image_prompt || adState.imagePrompt;
+        const falResult = (await fal.run("fal-ai/flux-pro/v1.1", {
+          input: { prompt, image_size: imageSize, num_images: 1, safety_tolerance: "2" },
+        })) as FalResult;
+        bgImageUrl = falResult?.images?.[0]?.url || bgImageUrl;
+      }
     }
 
     // Composite text onto (new or existing) background

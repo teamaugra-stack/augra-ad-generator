@@ -48,7 +48,8 @@ export interface GenerateResponse {
   cta: string;
   offer: string;
   layout: AdLayout;
-  model_selection: "standard" | "redux" | "edit";
+  model_selection: "standard" | "edit";
+  edit_instruction?: string;
 }
 
 export interface ChatMessage {
