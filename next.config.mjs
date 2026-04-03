@@ -16,6 +16,9 @@ const nextConfig = {
       },
     ],
   },
+  experimental: {
+    serverComponentsExternalPackages: ["@resvg/resvg-js", "sharp"],
+  },
 };
 
 export default nextConfig;

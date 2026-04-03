@@ -2,12 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import * as fal from "@fal-ai/serverless-client";
 import sharp from "sharp";
+import satori from "satori";
+import { Resvg } from "@resvg/resvg-js";
 import { readFileSync } from "fs";
 import { join } from "path";
 
 fal.config({
   credentials: process.env.FAL_KEY,
 });
+
+// Load static (non-variable) WOFF fonts — satori requires static weight fonts
+const fontBold = readFileSync(
+  join(process.cwd(), "public", "fonts", "Inter-Bold-Static.woff")
+);
+const fontRegular = readFileSync(
+  join(process.cwd(), "public", "fonts", "Inter-Regular-Static.woff")
+);
 
 const SYSTEM_PROMPT = `You are an elite AI art director and medical advertising specialist. You create high-converting static ad creatives for medical and aesthetic practices.
 
@@ -91,178 +101,191 @@ interface AdCopy {
 
 export const maxDuration = 60;
 
-function escapeXml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-}
-
-function wrapText(
-  text: string,
-  maxCharsPerLine: number
-): string[] {
-  const words = text.split(" ");
-  const lines: string[] = [];
-  let current = "";
-
-  for (const word of words) {
-    if ((current + " " + word).trim().length > maxCharsPerLine) {
-      if (current) lines.push(current.trim());
-      current = word;
-    } else {
-      current = current ? current + " " + word : word;
-    }
-  }
-  if (current) lines.push(current.trim());
-  return lines;
-}
-
-// Load and cache font as base64 for SVG embedding
-let fontBase64Cache: string | null = null;
-function getFontBase64(): string {
-  if (fontBase64Cache) return fontBase64Cache;
-  try {
-    const fontPath = join(process.cwd(), "public", "fonts", "Inter-Variable.ttf");
-    const fontBuffer = readFileSync(fontPath);
-    fontBase64Cache = fontBuffer.toString("base64");
-    return fontBase64Cache;
-  } catch {
-    return ""; // Fallback: will use system fonts
-  }
-}
-
-async function compositeTextOnImage(
-  imageUrl: string,
+async function renderTextOverlay(
   adCopy: AdCopy,
   dimensions: { width: number; height: number }
 ): Promise<Buffer> {
-  const imageResponse = await fetch(imageUrl);
-  const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
-
   const { width, height } = dimensions;
   const isStory = height > width * 1.5;
-  const isPortrait = height > width;
 
-  const headlineFontSize = isStory ? 52 : isPortrait ? 48 : 44;
-  const subFontSize = isStory ? 22 : 20;
-  const ctaFontSize = 18;
-  const offerFontSize = isStory ? 28 : 24;
+  const headlineSize = isStory ? 54 : 48;
+  const subSize = isStory ? 22 : 20;
+  const ctaSize = 17;
+  const offerSize = isStory ? 26 : 23;
 
-  const padding = 60;
-  const headlineY = isStory ? height * 0.14 : height * 0.1;
-  const ctaY = height - (isStory ? 180 : 140);
+  // Build the overlay layout as satori virtual DOM
+  const children: Record<string, unknown>[] = [];
 
-  const headlineChars = isStory ? 18 : 22;
-  const headlineLines = wrapText(adCopy.headline.toUpperCase(), headlineChars);
-  const subLines = wrapText(adCopy.subheadline, isStory ? 28 : 34);
+  // Top section: headline + subheadline
+  const topChildren: Record<string, unknown>[] = [
+    {
+      type: "div",
+      props: {
+        style: {
+          fontSize: headlineSize,
+          fontWeight: 700,
+          color: "white",
+          letterSpacing: "1px",
+          lineHeight: 1.2,
+          textShadow: "0 2px 20px rgba(0,0,0,0.5)",
+        },
+        children: adCopy.headline.toUpperCase(),
+      },
+    },
+    {
+      type: "div",
+      props: {
+        style: {
+          fontSize: subSize,
+          fontWeight: 400,
+          color: "rgba(255,255,255,0.88)",
+          marginTop: 12,
+          lineHeight: 1.5,
+          textShadow: "0 1px 10px rgba(0,0,0,0.5)",
+        },
+        children: adCopy.subheadline,
+      },
+    },
+  ];
 
-  const fontB64 = getFontBase64();
-  const fontFamily = fontB64 ? "Inter" : "Arial, Helvetica, sans-serif";
-
-  const svgParts: string[] = [];
-
-  // Embed font via @font-face if available
-  if (fontB64) {
-    svgParts.push(`
-      <defs>
-        <style>
-          @font-face {
-            font-family: 'Inter';
-            src: url('data:font/ttf;base64,${fontB64}') format('truetype');
-            font-weight: 100 900;
-            font-style: normal;
-          }
-        </style>
-        <linearGradient id="topGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="black" stop-opacity="0.8"/>
-          <stop offset="100%" stop-color="black" stop-opacity="0"/>
-        </linearGradient>
-        <linearGradient id="bottomGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="black" stop-opacity="0"/>
-          <stop offset="100%" stop-color="black" stop-opacity="0.85"/>
-        </linearGradient>
-      </defs>
-    `);
-  } else {
-    svgParts.push(`
-      <defs>
-        <linearGradient id="topGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="black" stop-opacity="0.8"/>
-          <stop offset="100%" stop-color="black" stop-opacity="0"/>
-        </linearGradient>
-        <linearGradient id="bottomGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="black" stop-opacity="0"/>
-          <stop offset="100%" stop-color="black" stop-opacity="0.85"/>
-        </linearGradient>
-      </defs>
-    `);
-  }
-
-  // Gradient scrims
-  svgParts.push(`
-    <rect x="0" y="0" width="${width}" height="${height * 0.45}" fill="url(#topGrad)"/>
-    <rect x="0" y="${height * 0.55}" width="${width}" height="${height * 0.45}" fill="url(#bottomGrad)"/>
-  `);
-
-  // Headline
-  headlineLines.forEach((line, i) => {
-    const y = headlineY + i * (headlineFontSize * 1.3);
-    svgParts.push(`
-      <text x="${padding}" y="${y}" font-family="${fontFamily}" font-size="${headlineFontSize}" font-weight="800" fill="white" letter-spacing="1.5">${escapeXml(line)}</text>
-    `);
+  // Top gradient scrim + text
+  children.push({
+    type: "div",
+    props: {
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "flex-start",
+        padding: "50px 50px 80px",
+        width: "100%",
+        background:
+          "linear-gradient(180deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.3) 60%, transparent 100%)",
+      },
+      children: topChildren,
+    },
   });
 
-  // Subheadline
-  const subStartY = headlineY + headlineLines.length * (headlineFontSize * 1.3) + 16;
-  subLines.forEach((line, i) => {
-    const y = subStartY + i * (subFontSize * 1.6);
-    svgParts.push(`
-      <text x="${padding}" y="${y}" font-family="${fontFamily}" font-size="${subFontSize}" font-weight="400" fill="rgba(255,255,255,0.9)">${escapeXml(line)}</text>
-    `);
+  // Spacer to push bottom content down
+  children.push({
+    type: "div",
+    props: { style: { flex: 1 }, children: "" },
   });
 
-  // Offer badge
+  // Bottom section: offer + CTA
+  const bottomChildren: Record<string, unknown>[] = [];
+
   if (adCopy.offer) {
-    const offerLines = wrapText(adCopy.offer.toUpperCase(), 25);
-    const badgeHeight = offerLines.length * (offerFontSize * 1.4) + 30;
-    const badgeY = ctaY - badgeHeight - 25;
-    svgParts.push(`
-      <rect x="${padding}" y="${badgeY}" width="${width - padding * 2}" height="${badgeHeight}" rx="12" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
-    `);
-    offerLines.forEach((line, i) => {
-      svgParts.push(`
-        <text x="${width / 2}" y="${badgeY + 30 + i * (offerFontSize * 1.4)}" font-family="${fontFamily}" font-size="${offerFontSize}" font-weight="700" fill="white" text-anchor="middle" letter-spacing="1">${escapeXml(line)}</text>
-      `);
+    bottomChildren.push({
+      type: "div",
+      props: {
+        style: {
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "14px 28px",
+          background: "rgba(255,255,255,0.12)",
+          border: "1px solid rgba(255,255,255,0.2)",
+          borderRadius: 12,
+          marginBottom: 20,
+          width: "100%",
+        },
+        children: {
+          type: "div",
+          props: {
+            style: {
+              fontSize: offerSize,
+              fontWeight: 700,
+              color: "white",
+              letterSpacing: "1px",
+              textAlign: "center",
+            },
+            children: adCopy.offer.toUpperCase(),
+          },
+        },
+      },
     });
   }
 
   // CTA button
-  const ctaText = adCopy.cta.toUpperCase();
-  const ctaWidth = Math.max(ctaText.length * ctaFontSize * 0.7 + 60, 220);
-  const ctaX = (width - ctaWidth) / 2;
-  svgParts.push(`
-    <rect x="${ctaX}" y="${ctaY}" width="${ctaWidth}" height="50" rx="25" fill="white"/>
-    <text x="${width / 2}" y="${ctaY + 33}" font-family="${fontFamily}" font-size="${ctaFontSize}" font-weight="700" fill="black" text-anchor="middle" letter-spacing="2">${escapeXml(ctaText)}</text>
-  `);
-
-  const svgOverlay = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">${svgParts.join("")}</svg>`;
-
-  const result = await sharp(imageBuffer)
-    .resize(width, height, { fit: "cover" })
-    .composite([
-      {
-        input: Buffer.from(svgOverlay),
-        top: 0,
-        left: 0,
+  bottomChildren.push({
+    type: "div",
+    props: {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "14px 48px",
+        background: "white",
+        borderRadius: 999,
+        alignSelf: "center",
       },
-    ])
-    .png()
-    .toBuffer();
+      children: {
+        type: "div",
+        props: {
+          style: {
+            fontSize: ctaSize,
+            fontWeight: 700,
+            color: "black",
+            letterSpacing: "2px",
+          },
+          children: adCopy.cta.toUpperCase(),
+        },
+      },
+    },
+  });
 
-  return result;
+  children.push({
+    type: "div",
+    props: {
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        padding: "80px 50px 50px",
+        width: "100%",
+        background:
+          "linear-gradient(0deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)",
+      },
+      children: bottomChildren,
+    },
+  });
+
+  // Root element
+  const element = {
+    type: "div",
+    props: {
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        width: "100%",
+        height: "100%",
+      },
+      children,
+    },
+  };
+
+  // Render with satori — fonts are embedded as vector paths
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const svg = await satori(element as any, {
+    width,
+    height,
+    fonts: [
+      { name: "Inter", data: fontBold, weight: 700, style: "normal" as const },
+      {
+        name: "Inter",
+        data: fontRegular,
+        weight: 400,
+        style: "normal" as const,
+      },
+    ],
+  });
+
+  // Convert SVG to PNG with resvg
+  const resvg = new Resvg(svg, {
+    fitTo: { mode: "width" as const, value: width },
+    background: "rgba(0,0,0,0)",
+  });
+  return Buffer.from(resvg.render().asPng());
 }
 
 export async function POST(request: NextRequest) {
@@ -284,7 +307,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Build user message
     let userMessage = `Ad Category: ${adType}
 Procedure/Service: ${procedure}
 Key Message & Context: ${keyMessage}
@@ -301,12 +323,7 @@ Brand Asset Note: ${brandAssetNote || "None"}`;
       model: "claude-3-haiku-20240307",
       max_tokens: 1024,
       system: SYSTEM_PROMPT,
-      messages: [
-        {
-          role: "user",
-          content: userMessage,
-        },
-      ],
+      messages: [{ role: "user", content: userMessage }],
     });
 
     const rawText =
@@ -319,10 +336,8 @@ Brand Asset Note: ${brandAssetNote || "None"}`;
       );
     }
 
-    // Parse Claude's JSON response
     let adCopy: AdCopy;
     try {
-      // Strip any markdown code fences if present
       const cleaned = rawText
         .replace(/```json\s*/g, "")
         .replace(/```\s*/g, "")
@@ -350,7 +365,6 @@ Brand Asset Note: ${brandAssetNote || "None"}`;
       safety_tolerance: "2",
     };
 
-    // If reference image provided, use redux endpoint for image-to-image
     let falModel = "fal-ai/flux-pro/v1.1";
     if (referenceImageBase64) {
       falModel = "fal-ai/flux-pro/v1.1/redux";
@@ -373,14 +387,19 @@ Brand Asset Note: ${brandAssetNote || "None"}`;
       );
     }
 
-    // Step 3: Composite text overlay onto image
-    const composited = await compositeTextOnImage(
-      bgImageUrl,
-      adCopy,
-      dimensions
-    );
+    // Step 3: Render text overlay with satori + resvg
+    const textPng = await renderTextOverlay(adCopy, dimensions);
 
-    // Convert to base64 data URL for the response
+    // Step 4: Composite text onto background with sharp
+    const bgResponse = await fetch(bgImageUrl);
+    const bgBuffer = Buffer.from(await bgResponse.arrayBuffer());
+
+    const composited = await sharp(bgBuffer)
+      .resize(dimensions.width, dimensions.height, { fit: "cover" })
+      .composite([{ input: textPng, top: 0, left: 0, blend: "over" }])
+      .png()
+      .toBuffer();
+
     const base64Image = `data:image/png;base64,${composited.toString("base64")}`;
 
     return NextResponse.json({
