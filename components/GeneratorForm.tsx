@@ -4,10 +4,16 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence, useInView } from "framer-motion";
 
 const AD_TYPES = [
-  "Procedure Highlight",
-  "Practice Branding",
+  "Plastic Surgery",
+  "Med Spa / Aesthetics",
+  "Cosmetic Dentistry",
+  "Chiropractic / Physical Therapy",
+  "Men's Health / TRT",
+  "Weight Loss",
+  "Peptide / Anti-Aging / Functional Medicine",
   "Offer or Promotion",
-  "Authority Positioning",
+  "Authority / Doctor Positioning",
+  "Practice Branding",
 ];
 
 const OUTPUT_FORMATS = [
@@ -17,7 +23,7 @@ const OUTPUT_FORMATS = [
 ];
 
 const LOADING_MESSAGES = [
-  "Crafting your creative brief...",
+  "Analyzing your brief...",
   "Art directing the composition...",
   "Selecting the perfect lighting...",
   "Generating your ad creative...",
@@ -72,9 +78,9 @@ function CustomSelect({
         onClick={() => setOpen(!open)}
         className="input-style text-left flex items-center justify-between w-full"
       >
-        <span>{value}</span>
+        <span className="truncate">{value}</span>
         <svg
-          className={`w-4 h-4 text-neutral-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          className={`w-4 h-4 text-neutral-400 transition-transform duration-200 flex-shrink-0 ${open ? "rotate-180" : ""}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -95,7 +101,7 @@ function CustomSelect({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.96 }}
             transition={{ duration: 0.15, ease: "easeOut" as const }}
-            className="absolute z-50 mt-2 w-full rounded-xl overflow-hidden border border-white/[0.1] bg-[#161616] backdrop-blur-xl shadow-2xl shadow-black/50"
+            className="absolute z-50 mt-2 w-full rounded-xl overflow-hidden border border-white/[0.1] bg-[#161616] backdrop-blur-xl shadow-2xl shadow-black/50 max-h-[280px] overflow-y-auto"
           >
             {options.map((opt) => (
               <button
@@ -114,8 +120,18 @@ function CustomSelect({
                 {opt}
                 {opt === value && (
                   <span className="float-right text-violet-400">
-                    <svg className="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    <svg
+                      className="w-4 h-4 inline"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                   </span>
                 )}
@@ -135,6 +151,9 @@ export default function GeneratorForm() {
   const [keyMessage, setKeyMessage] = useState("");
   const [outputFormat, setOutputFormat] = useState(OUTPUT_FORMATS[0]);
   const [brandAssetNote, setBrandAssetNote] = useState("");
+  const [referenceImages, setReferenceImages] = useState<File[]>([]);
+  const [referenceImageDescription, setReferenceImageDescription] =
+    useState("");
 
   const [loading, setLoading] = useState(false);
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
@@ -143,7 +162,19 @@ export default function GeneratorForm() {
   const [showPrompt, setShowPrompt] = useState(false);
 
   const formRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const isInView = useInView(formRef, { once: true, margin: "-80px" });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files);
+      setReferenceImages((prev) => [...prev, ...newFiles].slice(0, 5));
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setReferenceImages((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -170,6 +201,7 @@ export default function GeneratorForm() {
           keyMessage,
           outputFormat,
           brandAssetNote,
+          referenceImageDescription: referenceImageDescription || undefined,
         }),
       });
 
@@ -225,7 +257,6 @@ export default function GeneratorForm() {
           animate={isInView ? "visible" : "hidden"}
         >
           <div className="flex items-center gap-3 mb-1">
-            {/* Sparkle icon */}
             <svg
               className="w-5 h-5 text-violet-400/70"
               fill="currentColor"
@@ -238,12 +269,12 @@ export default function GeneratorForm() {
             </h2>
           </div>
           <p className="text-sm text-neutral-500 mb-8 pl-8">
-            Fill in the details and we&apos;ll handle the rest.
+            Fill in the details and we&apos;ll generate your ad creative.
           </p>
         </motion.div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Ad Type — custom dropdown */}
+          {/* Ad Type */}
           <motion.div
             custom={1}
             variants={fadeInUp}
@@ -251,7 +282,7 @@ export default function GeneratorForm() {
             animate={isInView ? "visible" : "hidden"}
           >
             <CustomSelect
-              label="Ad Type"
+              label="Ad Category"
               value={adType}
               onChange={setAdType}
               options={AD_TYPES}
@@ -270,31 +301,31 @@ export default function GeneratorForm() {
               type="text"
               value={procedure}
               onChange={(e) => setProcedure(e.target.value)}
-              placeholder="e.g. Rhinoplasty, Botox, IV Therapy"
+              placeholder="e.g. Rhinoplasty, Botox, SmartLipo, Veneers, TRT, IV Therapy"
               className="input-style"
               required
             />
           </motion.div>
 
-          {/* Key Message */}
+          {/* Key Message — now a textarea */}
           <motion.div
             custom={3}
             variants={fadeInUp}
             initial="hidden"
             animate={isInView ? "visible" : "hidden"}
           >
-            <label className="label-style">Key Message</label>
-            <input
-              type="text"
+            <label className="label-style">Key Message & Context</label>
+            <textarea
               value={keyMessage}
               onChange={(e) => setKeyMessage(e.target.value)}
-              placeholder="e.g. Subtle refinement. Lasting confidence."
-              className="input-style"
+              placeholder="Describe your ad vision in detail. Example: Our clinic specializes in hormone optimization for men. We want to convey strength, confidence, and vitality. The ad should feel premium and masculine — think dark gym aesthetic with dramatic lighting. We're running a limited-time offer for new patients."
+              className="input-style min-h-[120px] resize-y"
+              rows={4}
               required
             />
           </motion.div>
 
-          {/* Output Format — custom dropdown */}
+          {/* Output Format */}
           <motion.div
             custom={4}
             variants={fadeInUp}
@@ -309,9 +340,101 @@ export default function GeneratorForm() {
             />
           </motion.div>
 
-          {/* Brand Asset Note */}
+          {/* Reference Image Upload */}
           <motion.div
             custom={5}
+            variants={fadeInUp}
+            initial="hidden"
+            animate={isInView ? "visible" : "hidden"}
+          >
+            <label className="label-style">
+              Reference Images{" "}
+              <span className="text-neutral-600 normal-case">
+                (optional, up to 5)
+              </span>
+            </label>
+
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="input-style cursor-pointer flex items-center justify-center gap-2 py-4 border-dashed hover:border-white/[0.2] hover:bg-white/[0.06]"
+            >
+              <svg
+                className="w-5 h-5 text-neutral-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+              <span className="text-sm text-neutral-500">
+                Click to upload reference images
+              </span>
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleFileChange}
+              className="hidden"
+            />
+
+            {/* Image previews */}
+            {referenceImages.length > 0 && (
+              <div className="flex gap-2 mt-3 flex-wrap">
+                {referenceImages.map((file, i) => (
+                  <div key={i} className="relative group">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt={`Reference ${i + 1}`}
+                      className="w-16 h-16 rounded-lg object-cover border border-white/[0.1]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(i)}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <svg
+                        className="w-3 h-3 text-white"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Reference image description */}
+            {referenceImages.length > 0 && (
+              <textarea
+                value={referenceImageDescription}
+                onChange={(e) => setReferenceImageDescription(e.target.value)}
+                placeholder="Describe what you want from these reference images. e.g. 'Match the dark moody lighting and gym aesthetic from image 1, but with our doctor as the subject instead'"
+                className="input-style mt-3 min-h-[80px] resize-y"
+                rows={2}
+              />
+            )}
+          </motion.div>
+
+          {/* Brand Asset Note */}
+          <motion.div
+            custom={6}
             variants={fadeInUp}
             initial="hidden"
             animate={isInView ? "visible" : "hidden"}
@@ -324,14 +447,14 @@ export default function GeneratorForm() {
               type="text"
               value={brandAssetNote}
               onChange={(e) => setBrandAssetNote(e.target.value)}
-              placeholder="e.g. Professional headshot of surgeon"
+              placeholder="e.g. Professional headshot of surgeon, clinic interior, specific brand colors"
               className="input-style"
             />
           </motion.div>
 
           {/* Generate Button */}
           <motion.div
-            custom={6}
+            custom={7}
             variants={fadeInUp}
             initial="hidden"
             animate={isInView ? "visible" : "hidden"}
