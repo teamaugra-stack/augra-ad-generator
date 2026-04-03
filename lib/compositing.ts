@@ -75,15 +75,15 @@ function buildScrim(
 ): Record<string, unknown> | null {
   const scrims: Record<string, string> = {
     top_gradient:
-      "linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 35%, transparent 60%)",
+      "linear-gradient(180deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.55) 35%, rgba(0,0,0,0.1) 55%, transparent 70%)",
     bottom_gradient:
-      "linear-gradient(0deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 40%, transparent 65%)",
+      "linear-gradient(0deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.55) 35%, rgba(0,0,0,0.1) 55%, transparent 70%)",
     full_overlay:
-      "linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.7) 100%)",
+      "linear-gradient(180deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,0.4) 60%, rgba(0,0,0,0.8) 100%)",
     left_gradient:
-      "linear-gradient(90deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 45%, transparent 70%)",
+      "linear-gradient(90deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.55) 35%, rgba(0,0,0,0.1) 55%, transparent 75%)",
     vignette:
-      "radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.7) 100%)",
+      "radial-gradient(ellipse at center, rgba(0,0,0,0.15) 20%, rgba(0,0,0,0.75) 100%)",
     none: "transparent",
   };
 
@@ -343,7 +343,7 @@ function buildLayout(
         fontStyle,
         letterSpacing: layout.headline_style === "uppercase" ? "2px" : "0px",
         lineHeight: 1.15,
-        textShadow: "0 2px 20px rgba(0,0,0,0.4)",
+        textShadow: "0 2px 8px rgba(0,0,0,0.8), 0 4px 24px rgba(0,0,0,0.5)",
         maxWidth: layout.style === "split_left" || layout.style === "split_right" ? "50%" : "90%",
       },
       children: headlineText,
@@ -361,7 +361,7 @@ function buildLayout(
         marginTop: 14,
         lineHeight: 1.55,
         fontFamily: "Inter",
-        textShadow: "0 1px 10px rgba(0,0,0,0.4)",
+        textShadow: "0 2px 6px rgba(0,0,0,0.7), 0 4px 20px rgba(0,0,0,0.4)",
         maxWidth: layout.style === "split_left" || layout.style === "split_right" ? "50%" : "85%",
       },
       children: adCopy.subheadline,

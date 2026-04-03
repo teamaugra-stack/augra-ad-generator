@@ -153,19 +153,41 @@ function CustomSelect({
 /* ===== Main Form ===== */
 function buildClientContext(client: ClientData): string {
   const parts = [
-    `CLIENT BRAND PROFILE:`,
-    `Business: ${client.businessName}`,
-    `Contact: ${client.name}`,
-    client.brandTone ? `Brand Tone: ${client.brandTone}` : "",
-    client.services ? `Services: ${client.services}` : "",
-    client.website ? `Website: ${client.website}` : "",
-    client.targetAudience ? `Target Audience: ${client.targetAudience}` : "",
-    client.objections ? `Common Objections: ${client.objections}` : "",
-    client.wordsToAvoid && client.wordsToAvoid.toLowerCase() !== "none"
-      ? `Words to Avoid: ${client.wordsToAvoid}`
+    `=== CLIENT BRAND PROFILE — USE THIS FOR ALL CREATIVE DECISIONS ===`,
+    ``,
+    `BUSINESS NAME: ${client.businessName}`,
+    `CONTACT: ${client.name}`,
+    ``,
+    `BRAND TONE & VOICE: ${client.brandTone || "Professional, trustworthy"}`,
+    `This MUST be reflected in the ad copy — headline, subheadline, and CTA should match this exact tone.`,
+    ``,
+    `SERVICES OFFERED: ${client.services || "General medical services"}`,
+    `The image_prompt MUST be relevant to these specific services. Do NOT generate imagery for services this practice does not offer.`,
+    ``,
+    client.website ? `WEBSITE: ${client.website}` : "",
+    ``,
+    `TARGET AUDIENCE: ${client.targetAudience || "General patients"}`,
+    `The visual style, messaging, and tone should appeal specifically to this audience.`,
+    ``,
+    client.objections && client.objections.toLowerCase() !== "idk"
+      ? `PATIENT OBJECTIONS TO ADDRESS: ${client.objections}\nThe ad copy should subtly counter these objections.`
       : "",
+    ``,
+    client.wordsToAvoid && client.wordsToAvoid.toLowerCase() !== "none"
+      ? `⚠️ WORDS/PHRASES TO NEVER USE: ${client.wordsToAvoid}`
+      : "",
+    client.ideasToAvoid && client.ideasToAvoid.toLowerCase() !== "none"
+      ? `⚠️ TOPICS/STYLES TO AVOID: ${client.ideasToAvoid}`
+      : "",
+    ``,
+    `=== CRITICAL INSTRUCTIONS ===`,
+    `1. The image_prompt MUST match this client's specialty — if they are orthopedic, show orthopedic-relevant imagery, NOT cosmetic surgery or med spa imagery`,
+    `2. The headline and subheadline MUST use this client's brand tone`,
+    `3. The color palette and layout should feel like this specific practice's brand, not generic`,
+    `4. Reference their specific services in the subheadline when relevant`,
+    ``,
     client.onboardingDoc
-      ? `\nFULL ONBOARDING DOCUMENT:\n${client.onboardingDoc}`
+      ? `=== FULL ONBOARDING DOCUMENT (use for deep brand context) ===\n${client.onboardingDoc}`
       : "",
   ];
   return parts.filter(Boolean).join("\n");
@@ -325,13 +347,16 @@ export default function GeneratorForm({ clientData }: { clientData?: ClientData 
               : "Fill in the details and we\u0027ll generate your ad creative."}
           </p>
           {clientData?.logoUrl && (
-            <div className="mb-6 pl-8">
+            <div className="mb-6 ml-8 inline-flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white/[0.06] border border-white/[0.1]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={clientData.logoUrl}
                 alt={`${clientData.businessName} logo`}
-                className="h-10 w-auto object-contain opacity-70"
+                className="h-8 w-8 object-contain rounded"
               />
+              <span className="text-xs text-neutral-400 font-medium">
+                {clientData.businessName}
+              </span>
             </div>
           )}
         </motion.div>
