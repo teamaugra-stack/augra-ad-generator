@@ -48,7 +48,7 @@ export interface GenerateResponse {
   cta: string;
   offer: string;
   layout: AdLayout;
-  model_selection: "flux_standard" | "flux_kontext" | "gpt_image" | "nano_banana" | "seedream";
+  model_selection: "flux_standard" | "flux_kontext" | "gpt_image" | "nano_banana_pro" | "nano_banana_2" | "seedream";
   edit_instruction?: string;
 }
 
