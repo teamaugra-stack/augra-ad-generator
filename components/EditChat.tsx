@@ -6,6 +6,7 @@ import type { ChatMessage, AdState, AdCopyData, AdLayout } from "@/types/chat";
 
 interface EditChatProps {
   initialAdState: AdState;
+  clientName?: string;
   onUpdate: (update: {
     imageUrl: string;
     bgImageUrl: string;
@@ -31,7 +32,7 @@ const QUICK_EDITS = [
   "Change the headline",
 ];
 
-export default function EditChat({ initialAdState, onUpdate }: EditChatProps) {
+export default function EditChat({ initialAdState, clientName, onUpdate }: EditChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -61,6 +62,7 @@ export default function EditChat({ initialAdState, onUpdate }: EditChatProps) {
           messages: updatedMessages,
           adState,
           preferredModel: selectedModel !== "auto" ? selectedModel : undefined,
+          clientName: clientName || undefined,
         }),
       });
 

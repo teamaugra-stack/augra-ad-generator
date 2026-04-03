@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import * as fal from "@fal-ai/serverless-client";
 import { compositeAdImage, FORMAT_TO_SIZE } from "@/lib/compositing";
 import { CHAT_SYSTEM_PROMPT } from "@/lib/prompts";
+import { logUsage } from "@/lib/usage";
 import type { ChatMessage, AdState } from "@/types/chat";
 
 fal.config({ credentials: process.env.FAL_KEY });
@@ -71,11 +72,14 @@ function pickModel(editInstruction: string, preferredModel?: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages, adState, preferredModel }: {
+    const { messages, adState, preferredModel, clientName: reqClientName }: {
       messages: ChatMessage[];
       adState: AdState;
       preferredModel?: string;
+      clientName?: string;
     } = await request.json();
+
+    const clientName = reqClientName || "anonymous";
 
     if (!messages?.length || !adState) {
       return NextResponse.json({ error: "Missing messages or ad state." }, { status: 400 });
@@ -104,6 +108,8 @@ Category: ${adState.originalInputs.adType}`;
       system: CHAT_SYSTEM_PROMPT,
       messages: claudeMessages,
     });
+
+    logUsage(clientName, "chat", "claude-3-haiku-20240307");
 
     const rawText = response.content[0].type === "text" ? response.content[0].text : "";
     if (!rawText) {
@@ -139,19 +145,28 @@ Category: ${adState.originalInputs.adType}`;
         const falUrl = await ensureFalUrl(adState.currentBgImageUrl);
         const model = pickModel(editInstruction, preferredModel);
 
+        let usedModel = model;
         try {
           const newUrl = await editWithModel(model, falUrl, editInstruction, imageSize);
           if (newUrl) bgImageUrl = newUrl;
         } catch (editErr) {
           console.error(`Model ${model} failed:`, editErr);
-          // Fallback: try Kontext then Flux standard
           try {
+            usedModel = "flux_kontext";
             const newUrl = await editWithModel("flux_kontext", falUrl, editInstruction, imageSize);
             if (newUrl) bgImageUrl = newUrl;
           } catch {
             console.error("All edit models failed");
           }
         }
+        // Log the FAL model that was actually used
+        const falModelIds: Record<string, string> = {
+          gpt_image: "fal-ai/gpt-image-1.5/edit",
+          seedream: "fal-ai/bytedance/seedream/v4.5/edit",
+          flux_kontext: "fal-ai/flux-pro/kontext",
+          nano_banana_pro: "fal-ai/nano-banana-pro/edit",
+        };
+        logUsage(clientName, "chat", falModelIds[usedModel] || "fal-ai/nano-banana-pro/edit");
       } else {
         // Full regen
         const prompt = parsed.new_image_prompt || adState.imagePrompt;

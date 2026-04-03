@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import * as fal from "@fal-ai/serverless-client";
 import { compositeAdImage, FORMAT_TO_SIZE, DEFAULT_LAYOUT } from "@/lib/compositing";
 import { GENERATE_SYSTEM_PROMPT } from "@/lib/prompts";
+import { logUsage, extractClientName } from "@/lib/usage";
 import type { AdLayout, GenerateResponse } from "@/types/chat";
 
 fal.config({ credentials: process.env.FAL_KEY });
@@ -83,6 +84,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
     }
 
+    const clientName = extractClientName(clientContext);
     const hasImage = !!referenceImageBase64;
 
     let userMessage = `Ad Category: ${adType}
@@ -107,6 +109,8 @@ Reference Image Provided: ${hasImage ? "Yes — user uploaded an image they want
       system: GENERATE_SYSTEM_PROMPT,
       messages: [{ role: "user", content: userMessage }],
     });
+
+    logUsage(clientName, "generate", "claude-3-haiku-20240307");
 
     const rawText = message.content[0].type === "text" ? message.content[0].text : "";
     if (!rawText) {
@@ -174,6 +178,17 @@ Reference Image Provided: ${hasImage ? "Yes — user uploaded an image they want
     if (!bgImageUrl) {
       return NextResponse.json({ error: "Failed to generate image." }, { status: 500 });
     }
+
+    // Log FAL model usage
+    const falModelMap: Record<string, string> = {
+      flux_standard: "fal-ai/flux-pro/v1.1",
+      flux_kontext: hasImage ? "fal-ai/flux-pro/kontext" : "fal-ai/flux-pro/v1.1",
+      gpt_image: "fal-ai/gpt-image-1.5/edit",
+      nano_banana_pro: hasImage ? "fal-ai/nano-banana-pro/edit" : "fal-ai/nano-banana-pro",
+      nano_banana_2: hasImage ? "fal-ai/nano-banana-2/edit" : "fal-ai/nano-banana-2",
+      seedream: hasImage ? "fal-ai/bytedance/seedream/v4.5/edit" : "fal-ai/bytedance/seedream/v4.5/text-to-image",
+    };
+    logUsage(clientName, "generate", falModelMap[modelKey] || "fal-ai/flux-pro/v1.1");
 
     // Step 3: Composite text overlay
     const adCopy = {

@@ -245,11 +245,12 @@ function StepHeader({ stepNum, total, title, highlight, subtitle }: { stepNum: n
 
 // ===== RESULT VIEW =====
 
-function ResultView({ result, adState, onUpdate, onNewAd }: {
+function ResultView({ result, adState, onUpdate, onNewAd, clientName }: {
   result: GenerationResult;
   adState: { currentBgImageUrl: string; adCopy: AdCopyData; layout: AdLayout; imagePrompt: string; modelUsed: string; outputFormat: string; originalInputs: { adType: string; procedure: string; keyMessage: string; brandAssetNote: string } };
   onUpdate: (u: { imageUrl: string; bgImageUrl: string; adCopy: AdCopyData; layout: AdLayout }) => void;
   onNewAd: () => void;
+  clientName?: string;
 }) {
   const [editMode, setEditMode] = useState(false);
 
@@ -358,7 +359,7 @@ function ResultView({ result, adState, onUpdate, onNewAd }: {
       </div>
 
       {/* Chat bar at bottom */}
-      <EditChat initialAdState={adState} onUpdate={onUpdate} />
+      <EditChat initialAdState={adState} clientName={clientName} onUpdate={onUpdate} />
     </div>
   );
 }
@@ -467,6 +468,7 @@ function AppContent() {
             adState={{ currentBgImageUrl: result.bgImageUrl || "", adCopy: result.adCopy || { headline: "", subheadline: "", cta: "", offer: "" }, layout: result.layout || {} as AdLayout, imagePrompt: result.prompt, modelUsed: result.modelUsed || "flux_standard", outputFormat, originalInputs: { adType, procedure, keyMessage, brandAssetNote } }}
             onUpdate={(u) => setResult((p) => p ? { ...p, imageUrl: u.imageUrl, bgImageUrl: u.bgImageUrl, adCopy: u.adCopy, layout: u.layout } : p)}
             onNewAd={handleNewAd}
+            clientName={clientData?.businessName}
           />
         </div>
       </div>
