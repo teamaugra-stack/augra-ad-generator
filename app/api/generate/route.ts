@@ -1,66 +1,66 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import * as fal from "@fal-ai/serverless-client";
+import sharp from "sharp";
 
 fal.config({
   credentials: process.env.FAL_KEY,
 });
 
-const SYSTEM_PROMPT = `You are an elite AI art director and medical advertising specialist. You have spent years crafting high-converting visual ad campaigns for plastic surgeons, med spas, cosmetic dentists, chiropractors, functional medicine clinics, weight loss practices, TRT/hormone clinics, and aesthetic practices across the US and UK.
+const SYSTEM_PROMPT = `You are an elite AI art director and medical advertising specialist. You create high-converting static ad creatives for medical and aesthetic practices.
 
-Your job is to receive client inputs and transform them into a masterfully crafted image generation prompt that will produce a scroll-stopping static advertisement image — the kind used in real Facebook, Instagram, and TikTok ad campaigns for medical and aesthetic practices.
+Your job: receive client inputs and produce TWO things:
+1. An image generation prompt for the ad BACKGROUND (no text in the image)
+2. Ad copy text that will be overlaid on the image
 
-IMPORTANT: You are generating the BACKGROUND IMAGE / HERO VISUAL for an ad. The text overlay, headlines, CTAs, logos, and copy will be added separately by the design team. Your image must leave space for text but must NOT contain any text, typography, words, letters, numbers, or watermarks whatsoever.
+You must respond with ONLY a valid JSON object in this exact format — no markdown, no code fences, no explanation:
 
-CORE VISUAL PHILOSOPHY:
+{"image_prompt":"...","headline":"...","subheadline":"...","cta":"...","offer":"..."}
 
-LIGHTING — Soft, directional, natural-feeling light. Golden hour warmth for authority and branding shots. Clean diffused window light for clinical content. Dramatic side-light for masculine/fitness themes. Never flat, never ring-lit.
+FIELD RULES:
+- image_prompt: 80-180 word prompt for generating the background image. Must produce a premium ad background with space for text overlay. NO text/typography in the image.
+- headline: The main headline, 2-8 words. Bold, attention-grabbing. e.g. "Your Mommy Makeover Starts Here", "#BeastMode", "Precision Body Sculpting."
+- subheadline: Supporting text, 5-20 words. e.g. "Board-certified plastic surgeon with 25+ years of experience", "Laser-assisted contouring guided by expertise"
+- cta: Call to action, 2-4 words. e.g. "Book Now", "Learn More", "Free Consultation", "Schedule Today"
+- offer: Optional promotional text. Leave empty string if no offer mentioned. e.g. "$1,500 Off Liposuction", "Limited to 50 Patients", "$37 Special Voucher"
 
-COLOUR APPROACH — Match the vertical:
-- Plastic surgery / med spa: warm creams, champagne, dusty rose, soft gold
-- Men's health / TRT: dark moody tones, charcoal, deep blue, gunmetal
-- Chiropractic / wellness: clean whites, warm neutrals, soft green accents
-- Dentistry: bright clean whites, soft blue accents, fresh and clinical
-- Weight loss: bright, energetic, lifestyle-oriented warm tones
-- Functional medicine / peptides: modern, clinical-meets-luxury, teal and slate
+IMAGE PROMPT GUIDELINES BY CATEGORY:
 
-COMPOSITION — Always leave generous negative space for text overlay, especially in the top third and bottom quarter. The subject should not fill the entire frame. Think "ad background" not "portrait". Rule of thirds positioning.
+PLASTIC SURGERY — Editorial beauty shot or confident surgeon portrait. Warm creams, dusty rose, soft gold tones. Leave top third and bottom quarter empty for text.
 
-AD CATEGORY FRAMEWORKS — Based on real high-performing medical ads:
+MED SPA / AESTHETICS — Treatment scene (gloved hands, device on skin) or luxury clinic environment. Pink/rose gold accents. Premium self-care feel.
 
-PLASTIC SURGERY — Two styles: (A) Result-focused: beautiful, confident person showing the treatment area naturally, editorial fashion lighting, three-quarter or profile angle. (B) Consultation/authority: surgeon in tailored white coat, warm environment, approachable confidence. Never show surgical tools or graphic procedures.
+COSMETIC DENTISTRY — Perfect smile close-up with soft lighting, or 3D dental illustration. Bright, clean whites and soft blue accents.
 
-MED SPA / AESTHETICS — Clean clinical environment with luxury feel. Treatment scenes should show the experience (gloved hands with device on patient's face, serene patient expression). Pink/rose gold accents. Think premium self-care, not hospital.
+CHIROPRACTIC — Pain visualization (person touching neck/back with warm red glow) or active wellness scene. Clean whites, warm neutrals.
 
-COSMETIC DENTISTRY — Bright, clean aesthetic. Close-up of a perfect natural smile with soft lighting. Or: 3D medical illustration style showing dental work (veneers, implants). Always pristine and aspirational.
+MEN'S HEALTH / TRT — Dark, powerful, masculine. Athletic male figure, gym setting, dramatic low-key lighting, smoke/haze. Charcoal and steel tones.
 
-CHIROPRACTIC / PHYSICAL THERAPY — Two approaches: (A) Pain visualization: person touching neck/back/shoulder area, desaturated with warm red glow highlighting the pain zone. (B) Relief/wellness: active person in motion, stretching, vibrant and free. Grid/collage compositions work well.
+WEIGHT LOSS — Lifestyle energy. Healthy meal prep flat lay, active person, or confident athleisure scene. Bright, optimistic.
 
-MEN'S HEALTH / TRT / HORMONE — Dark, powerful, masculine aesthetic. Muscular male figure in gym/athletic setting, dramatic low-key lighting, smoke or atmospheric haze. Moody charcoal and steel tones. Confidence and strength without being aggressive.
+PEPTIDE / ANTI-AGING — Modern clinical luxury. IV drips, elegant vials on marble, lab-meets-lounge. Teal, slate, brushed metal.
 
-WEIGHT LOSS — Lifestyle and transformation energy. Healthy meal prep flat lay, active lifestyle scenes, or confident person in athleisure. Bright, optimistic lighting. Avoid clinical feel — this is about living better.
+OFFER / PROMOTION — Editorial still life. Treatment products arranged artfully. Maximum negative space. No people. Premium feel.
 
-PEPTIDE / ANTI-AGING / FUNCTIONAL MEDICINE — Modern clinical luxury. IV drip setups, elegant medical vials on marble surfaces, or sophisticated lab-meets-lounge environments. Teal, slate, brushed metal accents.
+AUTHORITY / DOCTOR — Doctor mid-shot, warm side light, premium clinic background. Tailored white coat, calm confidence.
 
-OFFER / PROMOTION — Editorial still life or flat lay. Treatment products, elegant medical supplies, or luxurious clinic details arranged artfully. Maximum negative space for price/offer text overlay. No people. Premium throughout — never look like a discount store.
+PRACTICE BRANDING — Environment as hero. Luxury empty clinic spaces. 5-star private club aesthetic.
 
-AUTHORITY / DOCTOR POSITIONING — Doctor as subject. Mid-shot, warm side light, soft bokeh background of a premium clinic. Tailored white coat, stethoscope optional. Calm authority, approachable warmth. Light, airy clinic environment.
+FORMAT RULES FOR IMAGE PROMPT:
+1:1 — Balanced composition. Append: "square format, 1:1 aspect ratio"
+4:5 — Subject lower two-thirds, space above. Append: "portrait format, 4:5 aspect ratio"
+9:16 — Subject middle third only, empty top/bottom. Append: "vertical story format, 9:16 aspect ratio"
 
-FORMAT RULES:
+Always end image_prompt with: "Photorealistic, ultra high resolution, commercial advertising photography, no text or typography or words or letters, no watermarks, no logos."
 
-1:1 — Balanced composition, breathing room all sides. Append: "square format, 1:1 aspect ratio"
-4:5 — Subject in lower two-thirds, generous space above for headline. Append: "portrait format, 4:5 aspect ratio"
-9:16 — Subject in middle third only, significant empty space top 25% and bottom 25% for text. Append: "vertical story format, 9:16 aspect ratio"
+REFERENCE IMAGE: If the user describes a reference image, adapt its visual style into your image_prompt.
 
-REFERENCE IMAGE HANDLING — If the user provides a reference image description, incorporate its visual style, composition, color palette, and mood into your prompt. Adapt it to be more premium and polished while keeping the core concept.
-
-COMPLIANCE — Never produce prompts resulting in: text or typography inside the image, watermarks, logos, before/after comparison imagery, explicit surgical imagery, identifiable real patient faces, unrealistic medical results.
-
-TECHNICAL QUALITY — Always include: camera/lens reference (Hasselblad X2D, Sony A7IV 85mm f/1.4, or Canon R5 depending on mood), specific lighting description, colour grading note.
-
-OUTPUT RULES — Return ONE image generation prompt only. No preamble, no explanation, no options, no commentary. Minimum 80 words, maximum 180 words. Single flowing paragraph of comma-separated visual descriptors. Begin immediately with the visual scene description. Never start with "A photo of" or "An image of" or "Generate".
-
-Always end with: "Photorealistic, ultra high resolution, commercial advertising photography quality, no visible text or typography or words or letters or numbers, no watermarks, no logos, no before/after comparison."`;
+AD COPY GUIDELINES:
+- Match the tone to the category (premium for surgery, bold for TRT, warm for wellness)
+- Headline should be the hook — what stops the scroll
+- Use the client's key message to inform the copy
+- If they mention an offer/discount, put it in the offer field
+- Keep it punchy and conversion-focused`;
 
 const FORMAT_TO_SIZE: Record<string, string> = {
   "1:1 (Instagram Square)": "square_hd",
@@ -68,12 +68,174 @@ const FORMAT_TO_SIZE: Record<string, string> = {
   "9:16 (Story)": "portrait_16_9",
 };
 
+const FORMAT_TO_DIMENSIONS: Record<string, { width: number; height: number }> =
+  {
+    "1:1 (Instagram Square)": { width: 1024, height: 1024 },
+    "4:5 (Facebook Feed)": { width: 1024, height: 1280 },
+    "9:16 (Story)": { width: 1024, height: 1820 },
+  };
+
 interface FalResult {
   images: { url: string }[];
 }
 
-// Allow up to 60s for Claude + FAL.ai generation
+interface AdCopy {
+  image_prompt: string;
+  headline: string;
+  subheadline: string;
+  cta: string;
+  offer: string;
+}
+
 export const maxDuration = 60;
+
+function escapeXml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function wrapText(
+  text: string,
+  maxCharsPerLine: number
+): string[] {
+  const words = text.split(" ");
+  const lines: string[] = [];
+  let current = "";
+
+  for (const word of words) {
+    if ((current + " " + word).trim().length > maxCharsPerLine) {
+      if (current) lines.push(current.trim());
+      current = word;
+    } else {
+      current = current ? current + " " + word : word;
+    }
+  }
+  if (current) lines.push(current.trim());
+  return lines;
+}
+
+async function compositeTextOnImage(
+  imageUrl: string,
+  adCopy: AdCopy,
+  dimensions: { width: number; height: number }
+): Promise<Buffer> {
+  // Fetch the generated image
+  const imageResponse = await fetch(imageUrl);
+  const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+
+  const { width, height } = dimensions;
+  const isStory = height > width * 1.5;
+  const isPortrait = height > width;
+
+  // Calculate text positioning
+  const headlineFontSize = isStory ? 52 : isPortrait ? 48 : 44;
+  const subFontSize = isStory ? 22 : 20;
+  const ctaFontSize = 18;
+  const offerFontSize = isStory ? 28 : 24;
+
+  const padding = 60;
+  const headlineY = isStory ? height * 0.12 : height * 0.08;
+  const ctaY = height - (isStory ? 180 : 140);
+
+  // Build headline lines
+  const headlineChars = isStory ? 20 : 24;
+  const headlineLines = wrapText(adCopy.headline.toUpperCase(), headlineChars);
+
+  // Build subheadline lines
+  const subLines = wrapText(adCopy.subheadline, isStory ? 30 : 36);
+
+  // SVG text overlay
+  const svgParts: string[] = [];
+
+  // Dark gradient overlays for text readability
+  svgParts.push(`
+    <defs>
+      <linearGradient id="topGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="black" stop-opacity="0.75"/>
+        <stop offset="100%" stop-color="black" stop-opacity="0"/>
+      </linearGradient>
+      <linearGradient id="bottomGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="black" stop-opacity="0"/>
+        <stop offset="100%" stop-color="black" stop-opacity="0.8"/>
+      </linearGradient>
+    </defs>
+    <rect x="0" y="0" width="${width}" height="${height * 0.4}" fill="url(#topGrad)"/>
+    <rect x="0" y="${height * 0.6}" width="${width}" height="${height * 0.4}" fill="url(#bottomGrad)"/>
+  `);
+
+  // Headline
+  headlineLines.forEach((line, i) => {
+    const y = headlineY + i * (headlineFontSize * 1.25);
+    svgParts.push(`
+      <text x="${padding}" y="${y}" font-family="Arial, Helvetica, sans-serif" font-size="${headlineFontSize}" font-weight="900" fill="white" letter-spacing="1">
+        ${escapeXml(line)}
+      </text>
+    `);
+  });
+
+  // Subheadline
+  const subStartY =
+    headlineY + headlineLines.length * (headlineFontSize * 1.25) + 20;
+  subLines.forEach((line, i) => {
+    const y = subStartY + i * (subFontSize * 1.5);
+    svgParts.push(`
+      <text x="${padding}" y="${y}" font-family="Arial, Helvetica, sans-serif" font-size="${subFontSize}" font-weight="400" fill="rgba(255,255,255,0.85)">
+        ${escapeXml(line)}
+      </text>
+    `);
+  });
+
+  // Offer badge (if present)
+  if (adCopy.offer) {
+    const offerLines = wrapText(adCopy.offer.toUpperCase(), 25);
+    const badgeHeight = offerLines.length * (offerFontSize * 1.4) + 30;
+    const badgeY = ctaY - badgeHeight - 20;
+    svgParts.push(`
+      <rect x="${padding}" y="${badgeY}" width="${width - padding * 2}" height="${badgeHeight}" rx="12" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+    `);
+    offerLines.forEach((line, i) => {
+      svgParts.push(`
+        <text x="${width / 2}" y="${badgeY + 28 + i * (offerFontSize * 1.4)}" font-family="Arial, Helvetica, sans-serif" font-size="${offerFontSize}" font-weight="700" fill="white" text-anchor="middle" letter-spacing="0.5">
+          ${escapeXml(line)}
+        </text>
+      `);
+    });
+  }
+
+  // CTA button
+  const ctaText = adCopy.cta.toUpperCase();
+  const ctaWidth = Math.max(ctaText.length * ctaFontSize * 0.65 + 50, 200);
+  const ctaX = (width - ctaWidth) / 2;
+  svgParts.push(`
+    <rect x="${ctaX}" y="${ctaY}" width="${ctaWidth}" height="48" rx="24" fill="white"/>
+    <text x="${width / 2}" y="${ctaY + 31}" font-family="Arial, Helvetica, sans-serif" font-size="${ctaFontSize}" font-weight="700" fill="black" text-anchor="middle" letter-spacing="1.5">
+      ${escapeXml(ctaText)}
+    </text>
+  `);
+
+  const svgOverlay = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+    ${svgParts.join("")}
+  </svg>`;
+
+  // Composite with sharp
+  const result = await sharp(imageBuffer)
+    .resize(width, height, { fit: "cover" })
+    .composite([
+      {
+        input: Buffer.from(svgOverlay),
+        top: 0,
+        left: 0,
+      },
+    ])
+    .png()
+    .toBuffer();
+
+  return result;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -84,6 +246,7 @@ export async function POST(request: NextRequest) {
       outputFormat,
       brandAssetNote,
       referenceImageDescription,
+      referenceImageBase64,
     } = await request.json();
 
     if (!adType || !procedure || !keyMessage || !outputFormat) {
@@ -93,7 +256,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Build user message with all inputs
+    // Build user message
     let userMessage = `Ad Category: ${adType}
 Procedure/Service: ${procedure}
 Key Message & Context: ${keyMessage}
@@ -104,7 +267,7 @@ Brand Asset Note: ${brandAssetNote || "None"}`;
       userMessage += `\nReference Image Description: ${referenceImageDescription}`;
     }
 
-    // Step 1: Generate image prompt via Claude
+    // Step 1: Generate ad copy + image prompt via Claude
     const anthropic = new Anthropic();
     const message = await anthropic.messages.create({
       model: "claude-3-haiku-20240307",
@@ -118,38 +281,91 @@ Brand Asset Note: ${brandAssetNote || "None"}`;
       ],
     });
 
-    const promptText =
+    const rawText =
       message.content[0].type === "text" ? message.content[0].text : "";
 
-    if (!promptText) {
+    if (!rawText) {
       return NextResponse.json(
-        { error: "Failed to generate image prompt." },
+        { error: "Failed to generate ad copy." },
         { status: 500 }
       );
     }
 
-    // Step 2: Generate image via FAL.ai
-    const imageSize = FORMAT_TO_SIZE[outputFormat] || "square_hd";
+    // Parse Claude's JSON response
+    let adCopy: AdCopy;
+    try {
+      // Strip any markdown code fences if present
+      const cleaned = rawText
+        .replace(/```json\s*/g, "")
+        .replace(/```\s*/g, "")
+        .trim();
+      adCopy = JSON.parse(cleaned);
+    } catch {
+      console.error("Failed to parse Claude response:", rawText);
+      return NextResponse.json(
+        { error: "Failed to parse ad copy. Retrying may help." },
+        { status: 500 }
+      );
+    }
 
-    const result = (await fal.run("fal-ai/flux-pro/v1.1", {
-      input: {
-        prompt: promptText,
-        image_size: imageSize,
-        num_images: 1,
-        safety_tolerance: "2",
-      },
+    // Step 2: Generate background image via FAL.ai
+    const imageSize = FORMAT_TO_SIZE[outputFormat] || "square_hd";
+    const dimensions = FORMAT_TO_DIMENSIONS[outputFormat] || {
+      width: 1024,
+      height: 1024,
+    };
+
+    let falInput: Record<string, unknown> = {
+      prompt: adCopy.image_prompt,
+      image_size: imageSize,
+      num_images: 1,
+      safety_tolerance: "2",
+    };
+
+    // If reference image provided, use redux endpoint for image-to-image
+    let falModel = "fal-ai/flux-pro/v1.1";
+    if (referenceImageBase64) {
+      falModel = "fal-ai/flux-pro/v1.1/redux";
+      falInput = {
+        ...falInput,
+        image_url: `data:image/jpeg;base64,${referenceImageBase64}`,
+      };
+    }
+
+    const result = (await fal.run(falModel, {
+      input: falInput,
     })) as FalResult;
 
-    const imageUrl = result?.images?.[0]?.url;
+    const bgImageUrl = result?.images?.[0]?.url;
 
-    if (!imageUrl) {
+    if (!bgImageUrl) {
       return NextResponse.json(
         { error: "Failed to generate image." },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ imageUrl, prompt: promptText });
+    // Step 3: Composite text overlay onto image
+    const composited = await compositeTextOnImage(
+      bgImageUrl,
+      adCopy,
+      dimensions
+    );
+
+    // Convert to base64 data URL for the response
+    const base64Image = `data:image/png;base64,${composited.toString("base64")}`;
+
+    return NextResponse.json({
+      imageUrl: base64Image,
+      bgImageUrl,
+      prompt: adCopy.image_prompt,
+      adCopy: {
+        headline: adCopy.headline,
+        subheadline: adCopy.subheadline,
+        cta: adCopy.cta,
+        offer: adCopy.offer,
+      },
+    });
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     console.error("Generation error:", errMsg);

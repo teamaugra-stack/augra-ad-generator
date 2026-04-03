@@ -32,7 +32,14 @@ const LOADING_MESSAGES = [
 
 interface GenerationResult {
   imageUrl: string;
+  bgImageUrl?: string;
   prompt: string;
+  adCopy?: {
+    headline: string;
+    subheadline: string;
+    cta: string;
+    offer: string;
+  };
 }
 
 const fadeInUp = {
@@ -192,6 +199,19 @@ export default function GeneratorForm() {
     }, 3000);
 
     try {
+      // Convert first reference image to base64 if present
+      let referenceImageBase64: string | undefined;
+      if (referenceImages.length > 0) {
+        const file = referenceImages[0];
+        const arrayBuffer = await file.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuffer);
+        let binary = "";
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        referenceImageBase64 = btoa(binary);
+      }
+
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -202,6 +222,7 @@ export default function GeneratorForm() {
           outputFormat,
           brandAssetNote,
           referenceImageDescription: referenceImageDescription || undefined,
+          referenceImageBase64,
         }),
       });
 
@@ -553,6 +574,29 @@ export default function GeneratorForm() {
               </svg>
               Download Image
             </button>
+
+            {/* Ad Copy Details */}
+            {result.adCopy && (
+              <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.08] space-y-2">
+                <p className="text-xs text-neutral-500 uppercase tracking-widest mb-3">
+                  Generated Ad Copy
+                </p>
+                <p className="text-sm text-white font-semibold">
+                  {result.adCopy.headline}
+                </p>
+                <p className="text-xs text-neutral-400">
+                  {result.adCopy.subheadline}
+                </p>
+                {result.adCopy.offer && (
+                  <p className="text-xs text-violet-400 font-medium">
+                    {result.adCopy.offer}
+                  </p>
+                )}
+                <p className="text-xs text-neutral-500">
+                  CTA: {result.adCopy.cta}
+                </p>
+              </div>
+            )}
 
             {/* Collapsible Prompt */}
             <div className="pt-2">
