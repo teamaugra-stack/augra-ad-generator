@@ -2,54 +2,28 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import * as fal from "@fal-ai/serverless-client";
 import { compositeAdImage, FORMAT_TO_SIZE } from "@/lib/compositing";
+import { CHAT_SYSTEM_PROMPT } from "@/lib/prompts";
 import type { ChatMessage, AdState } from "@/types/chat";
 
 fal.config({ credentials: process.env.FAL_KEY });
-
-const CHAT_SYSTEM_PROMPT = `You are a creative ad editor assistant. The user has already generated a medical/aesthetic ad and now wants to make edits.
-
-You have the current ad state (image prompt, ad copy, layout properties). The user will request changes.
-
-You must respond with ONLY a valid JSON object — no markdown, no code fences:
-
-{
-  "reply": "friendly 1-2 sentence explanation of what you changed",
-  "action_type": "text_edit or image_edit or full_regen",
-  "updated_ad_copy": { "headline": "...", "subheadline": "...", "cta": "...", "offer": "..." },
-  "updated_layout": { full layout object with ALL fields },
-  "image_instruction": "only for image_edit: prompt for FAL to modify the image",
-  "new_image_prompt": "only for full_regen: complete new image prompt"
-}
-
-ACTION TYPE RULES:
-- "text_edit": User wants to change text content (headline, CTA, offer, subheadline) OR layout/styling (colors, positions, sizes, decorative elements, CTA style). NO new image generation needed — just re-composite the text overlay. This is fast.
-- "image_edit": User wants to change the BACKGROUND IMAGE (lighting, subject, colors, mood, environment). Needs a new FAL.ai call.
-- "full_regen": User wants to completely start over with a different concept.
-
-IMPORTANT: Always return ALL fields in updated_ad_copy and updated_layout, even if unchanged. Copy the current values for unchanged fields.
-
-For text_edit: Only modify the specific fields the user mentions. Keep everything else identical.
-For image_edit: Update the image_instruction with a clear description. Keep ad copy and layout unless the user also wants those changed.
-For full_regen: Create entirely new image_prompt, ad copy, and layout.
-
-Layout fields you can modify:
-- style: editorial_top, centered_hero, bottom_heavy, split_left, minimal_center, full_overlay
-- headline_position: top-left, top-center, center, bottom-left, bottom-center
-- headline_size: xl, 2xl, 3xl, 4xl
-- headline_color: any hex color
-- headline_style: uppercase, mixed, italic
-- subheadline_color: any rgba color
-- cta_style: pill_white, pill_dark, outline, underline
-- cta_position: bottom-center, bottom-left, bottom-right
-- accent_color: any hex color
-- scrim_style: top_gradient, bottom_gradient, full_overlay, left_gradient, vignette, none
-- decorative: none, line_accent, border_frame, corner_marks`;
 
 interface FalResult {
   images: { url: string }[];
 }
 
-export const maxDuration = 60;
+export const maxDuration = 120;
+
+// Upload an image URL to FAL storage so editing models can access it
+async function ensureFalUrl(imageUrl: string): Promise<string> {
+  // If already a FAL URL, return as-is
+  if (imageUrl.includes("fal.media")) return imageUrl;
+
+  // Fetch and re-upload to FAL storage
+  const res = await fetch(imageUrl);
+  const buf = Buffer.from(await res.arrayBuffer());
+  const file = new File([buf], "current.jpg", { type: "image/jpeg" });
+  return await fal.storage.upload(file);
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -60,7 +34,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing messages or ad state." }, { status: 400 });
     }
 
-    // Build context message with current ad state
     const contextMessage = `CURRENT AD STATE:
 Image Prompt: ${adState.imagePrompt}
 Headline: ${adState.adCopy.headline}
@@ -69,19 +42,15 @@ CTA: ${adState.adCopy.cta}
 Offer: ${adState.adCopy.offer || "(none)"}
 Layout: ${JSON.stringify(adState.layout)}
 Output Format: ${adState.outputFormat}
-Category: ${adState.originalInputs.adType}`;
+Category: ${adState.originalInputs.adType}
+Current Background Image URL: ${adState.currentBgImageUrl}`;
 
-    // Build Claude messages
     const claudeMessages = [
       { role: "user" as const, content: contextMessage },
-      { role: "assistant" as const, content: "I have the current ad state. What changes would you like?" },
-      ...messages.map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      })),
+      { role: "assistant" as const, content: "I have the current ad state and image. What changes would you like?" },
+      ...messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
     ];
 
-    // Call Claude
     const anthropic = new Anthropic();
     const response = await anthropic.messages.create({
       model: "claude-3-haiku-20240307",
@@ -116,46 +85,55 @@ Category: ${adState.originalInputs.adType}`;
     const updatedLayout = { ...adState.layout, ...(parsed.updated_layout || {}) };
     let bgImageUrl = adState.currentBgImageUrl;
 
-    // Handle image generation if needed
     if (parsed.action_type === "image_edit" || parsed.action_type === "full_regen") {
       const imageSize = FORMAT_TO_SIZE[adState.outputFormat] || "square_hd";
 
       if (parsed.action_type === "image_edit" && adState.currentBgImageUrl) {
+        // ALWAYS edit the existing image — never generate from scratch
         const editInstruction = parsed.image_instruction || adState.imagePrompt;
 
-        // Detect complexity to pick the right model
+        // Ensure the current bg image is in FAL storage
+        const falUrl = await ensureFalUrl(adState.currentBgImageUrl);
+
+        // Pick model based on edit complexity
         const isMedical = /anatom|medical|overlay|x-ray|inside|muscle|bone|inject|cross.?section|illustrat|layer/i.test(editInstruction);
         const isArtistic = /artistic|futuristic|glow|scan|neon|style|creative/i.test(editInstruction);
 
         try {
           if (isMedical) {
-            // GPT Image for medical/anatomical edits
             const falResult = (await fal.run("fal-ai/gpt-image-1.5/edit", {
-              input: { image_urls: [adState.currentBgImageUrl], prompt: editInstruction, quality: "high", size: "1024x1024" },
+              input: { image_urls: [falUrl], prompt: editInstruction, quality: "high", size: "1024x1024" },
             })) as FalResult;
             bgImageUrl = falResult?.images?.[0]?.url || bgImageUrl;
           } else if (isArtistic) {
-            // Seedream for artistic edits
             const falResult = (await fal.run("fal-ai/bytedance/seedream/v4.5/edit", {
-              input: { image_urls: [adState.currentBgImageUrl], prompt: editInstruction },
+              input: { image_urls: [falUrl], prompt: editInstruction },
             })) as FalResult;
             bgImageUrl = falResult?.images?.[0]?.url || bgImageUrl;
           } else {
-            // Kontext for simple edits (fastest)
-            const falResult = (await fal.run("fal-ai/flux-pro/kontext", {
-              input: { image_url: adState.currentBgImageUrl, prompt: editInstruction, image_size: imageSize, num_images: 1 },
+            // Default: Nano Banana Pro for general edits (better than Kontext)
+            const falResult = (await fal.run("fal-ai/nano-banana-pro/edit", {
+              input: { image_urls: [falUrl], prompt: editInstruction, resolution: "2K" },
             })) as FalResult;
             bgImageUrl = falResult?.images?.[0]?.url || bgImageUrl;
           }
         } catch (editErr) {
-          console.error("Edit model failed, falling back to Nano Banana Pro:", editErr);
-          const falResult = (await fal.run("fal-ai/nano-banana-pro/edit", {
-            input: { image_urls: [adState.currentBgImageUrl], prompt: editInstruction, resolution: "2K" },
-          })) as FalResult;
-          bgImageUrl = falResult?.images?.[0]?.url || bgImageUrl;
+          console.error("Primary edit model failed, trying Kontext:", editErr);
+          try {
+            const falResult = (await fal.run("fal-ai/flux-pro/kontext", {
+              input: { image_url: falUrl, prompt: editInstruction, image_size: imageSize, num_images: 1 },
+            })) as FalResult;
+            bgImageUrl = falResult?.images?.[0]?.url || bgImageUrl;
+          } catch {
+            // Last resort: regenerate from prompt
+            const falResult = (await fal.run("fal-ai/flux-pro/v1.1", {
+              input: { prompt: editInstruction, image_size: imageSize, num_images: 1, safety_tolerance: "2" },
+            })) as FalResult;
+            bgImageUrl = falResult?.images?.[0]?.url || bgImageUrl;
+          }
         }
       } else {
-        // Full regen: Nano Banana Pro for quality
+        // Full regen
         const prompt = parsed.new_image_prompt || adState.imagePrompt;
         try {
           const falResult = (await fal.run("fal-ai/nano-banana-pro", {
@@ -171,13 +149,7 @@ Category: ${adState.originalInputs.adType}`;
       }
     }
 
-    // Composite text onto (new or existing) background
-    const { composited } = await compositeAdImage(
-      bgImageUrl,
-      updatedAdCopy,
-      updatedLayout,
-      adState.outputFormat
-    );
+    const { composited } = await compositeAdImage(bgImageUrl, updatedAdCopy, updatedLayout, adState.outputFormat);
 
     return NextResponse.json({
       reply: parsed.reply,
