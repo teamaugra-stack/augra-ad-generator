@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import * as fal from "@fal-ai/serverless-client";
 import sharp from "sharp";
+import { readFileSync } from "fs";
+import { join } from "path";
 
 fal.config({
   credentials: process.env.FAL_KEY,
@@ -118,12 +120,25 @@ function wrapText(
   return lines;
 }
 
+// Load and cache font as base64 for SVG embedding
+let fontBase64Cache: string | null = null;
+function getFontBase64(): string {
+  if (fontBase64Cache) return fontBase64Cache;
+  try {
+    const fontPath = join(process.cwd(), "public", "fonts", "Inter-Variable.ttf");
+    const fontBuffer = readFileSync(fontPath);
+    fontBase64Cache = fontBuffer.toString("base64");
+    return fontBase64Cache;
+  } catch {
+    return ""; // Fallback: will use system fonts
+  }
+}
+
 async function compositeTextOnImage(
   imageUrl: string,
   adCopy: AdCopy,
   dimensions: { width: number; height: number }
 ): Promise<Buffer> {
-  // Fetch the generated image
   const imageResponse = await fetch(imageUrl);
   const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
 
@@ -131,97 +146,110 @@ async function compositeTextOnImage(
   const isStory = height > width * 1.5;
   const isPortrait = height > width;
 
-  // Calculate text positioning
   const headlineFontSize = isStory ? 52 : isPortrait ? 48 : 44;
   const subFontSize = isStory ? 22 : 20;
   const ctaFontSize = 18;
   const offerFontSize = isStory ? 28 : 24;
 
   const padding = 60;
-  const headlineY = isStory ? height * 0.12 : height * 0.08;
+  const headlineY = isStory ? height * 0.14 : height * 0.1;
   const ctaY = height - (isStory ? 180 : 140);
 
-  // Build headline lines
-  const headlineChars = isStory ? 20 : 24;
+  const headlineChars = isStory ? 18 : 22;
   const headlineLines = wrapText(adCopy.headline.toUpperCase(), headlineChars);
+  const subLines = wrapText(adCopy.subheadline, isStory ? 28 : 34);
 
-  // Build subheadline lines
-  const subLines = wrapText(adCopy.subheadline, isStory ? 30 : 36);
+  const fontB64 = getFontBase64();
+  const fontFamily = fontB64 ? "Inter" : "Arial, Helvetica, sans-serif";
 
-  // SVG text overlay
   const svgParts: string[] = [];
 
-  // Dark gradient overlays for text readability
+  // Embed font via @font-face if available
+  if (fontB64) {
+    svgParts.push(`
+      <defs>
+        <style>
+          @font-face {
+            font-family: 'Inter';
+            src: url('data:font/ttf;base64,${fontB64}') format('truetype');
+            font-weight: 100 900;
+            font-style: normal;
+          }
+        </style>
+        <linearGradient id="topGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="black" stop-opacity="0.8"/>
+          <stop offset="100%" stop-color="black" stop-opacity="0"/>
+        </linearGradient>
+        <linearGradient id="bottomGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="black" stop-opacity="0"/>
+          <stop offset="100%" stop-color="black" stop-opacity="0.85"/>
+        </linearGradient>
+      </defs>
+    `);
+  } else {
+    svgParts.push(`
+      <defs>
+        <linearGradient id="topGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="black" stop-opacity="0.8"/>
+          <stop offset="100%" stop-color="black" stop-opacity="0"/>
+        </linearGradient>
+        <linearGradient id="bottomGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="black" stop-opacity="0"/>
+          <stop offset="100%" stop-color="black" stop-opacity="0.85"/>
+        </linearGradient>
+      </defs>
+    `);
+  }
+
+  // Gradient scrims
   svgParts.push(`
-    <defs>
-      <linearGradient id="topGrad" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="black" stop-opacity="0.75"/>
-        <stop offset="100%" stop-color="black" stop-opacity="0"/>
-      </linearGradient>
-      <linearGradient id="bottomGrad" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="black" stop-opacity="0"/>
-        <stop offset="100%" stop-color="black" stop-opacity="0.8"/>
-      </linearGradient>
-    </defs>
-    <rect x="0" y="0" width="${width}" height="${height * 0.4}" fill="url(#topGrad)"/>
-    <rect x="0" y="${height * 0.6}" width="${width}" height="${height * 0.4}" fill="url(#bottomGrad)"/>
+    <rect x="0" y="0" width="${width}" height="${height * 0.45}" fill="url(#topGrad)"/>
+    <rect x="0" y="${height * 0.55}" width="${width}" height="${height * 0.45}" fill="url(#bottomGrad)"/>
   `);
 
   // Headline
   headlineLines.forEach((line, i) => {
-    const y = headlineY + i * (headlineFontSize * 1.25);
+    const y = headlineY + i * (headlineFontSize * 1.3);
     svgParts.push(`
-      <text x="${padding}" y="${y}" font-family="Arial, Helvetica, sans-serif" font-size="${headlineFontSize}" font-weight="900" fill="white" letter-spacing="1">
-        ${escapeXml(line)}
-      </text>
+      <text x="${padding}" y="${y}" font-family="${fontFamily}" font-size="${headlineFontSize}" font-weight="800" fill="white" letter-spacing="1.5">${escapeXml(line)}</text>
     `);
   });
 
   // Subheadline
-  const subStartY =
-    headlineY + headlineLines.length * (headlineFontSize * 1.25) + 20;
+  const subStartY = headlineY + headlineLines.length * (headlineFontSize * 1.3) + 16;
   subLines.forEach((line, i) => {
-    const y = subStartY + i * (subFontSize * 1.5);
+    const y = subStartY + i * (subFontSize * 1.6);
     svgParts.push(`
-      <text x="${padding}" y="${y}" font-family="Arial, Helvetica, sans-serif" font-size="${subFontSize}" font-weight="400" fill="rgba(255,255,255,0.85)">
-        ${escapeXml(line)}
-      </text>
+      <text x="${padding}" y="${y}" font-family="${fontFamily}" font-size="${subFontSize}" font-weight="400" fill="rgba(255,255,255,0.9)">${escapeXml(line)}</text>
     `);
   });
 
-  // Offer badge (if present)
+  // Offer badge
   if (adCopy.offer) {
     const offerLines = wrapText(adCopy.offer.toUpperCase(), 25);
     const badgeHeight = offerLines.length * (offerFontSize * 1.4) + 30;
-    const badgeY = ctaY - badgeHeight - 20;
+    const badgeY = ctaY - badgeHeight - 25;
     svgParts.push(`
-      <rect x="${padding}" y="${badgeY}" width="${width - padding * 2}" height="${badgeHeight}" rx="12" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+      <rect x="${padding}" y="${badgeY}" width="${width - padding * 2}" height="${badgeHeight}" rx="12" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
     `);
     offerLines.forEach((line, i) => {
       svgParts.push(`
-        <text x="${width / 2}" y="${badgeY + 28 + i * (offerFontSize * 1.4)}" font-family="Arial, Helvetica, sans-serif" font-size="${offerFontSize}" font-weight="700" fill="white" text-anchor="middle" letter-spacing="0.5">
-          ${escapeXml(line)}
-        </text>
+        <text x="${width / 2}" y="${badgeY + 30 + i * (offerFontSize * 1.4)}" font-family="${fontFamily}" font-size="${offerFontSize}" font-weight="700" fill="white" text-anchor="middle" letter-spacing="1">${escapeXml(line)}</text>
       `);
     });
   }
 
   // CTA button
   const ctaText = adCopy.cta.toUpperCase();
-  const ctaWidth = Math.max(ctaText.length * ctaFontSize * 0.65 + 50, 200);
+  const ctaWidth = Math.max(ctaText.length * ctaFontSize * 0.7 + 60, 220);
   const ctaX = (width - ctaWidth) / 2;
   svgParts.push(`
-    <rect x="${ctaX}" y="${ctaY}" width="${ctaWidth}" height="48" rx="24" fill="white"/>
-    <text x="${width / 2}" y="${ctaY + 31}" font-family="Arial, Helvetica, sans-serif" font-size="${ctaFontSize}" font-weight="700" fill="black" text-anchor="middle" letter-spacing="1.5">
-      ${escapeXml(ctaText)}
-    </text>
+    <rect x="${ctaX}" y="${ctaY}" width="${ctaWidth}" height="50" rx="25" fill="white"/>
+    <text x="${width / 2}" y="${ctaY + 33}" font-family="${fontFamily}" font-size="${ctaFontSize}" font-weight="700" fill="black" text-anchor="middle" letter-spacing="2">${escapeXml(ctaText)}</text>
   `);
 
-  const svgOverlay = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-    ${svgParts.join("")}
-  </svg>`;
+  const svgOverlay = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">${svgParts.join("")}</svg>`;
 
-  // Composite with sharp
   const result = await sharp(imageBuffer)
     .resize(width, height, { fit: "cover" })
     .composite([
