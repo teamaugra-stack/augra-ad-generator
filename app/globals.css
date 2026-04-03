@@ -217,3 +217,77 @@ h1, h2, h3, h4, h5, h6 {
     linear-gradient(90deg, rgba(139, 92, 246, 0.03) 1px, transparent 1px);
   background-size: 60px 60px;
 }
+
+/* ===== WELCOME SCREEN ANIMATIONS ===== */
+
+@keyframes gridPulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  40% { transform: translate(40px, -30px) scale(1.1); }
+  70% { transform: translate(-20px, 25px) scale(0.93); }
+}
+
+.welcome-scanline {
+  animation: welcomeScan 4s linear infinite;
+}
+
+@keyframes welcomeScan {
+  0% { top: -4px; opacity: 1; }
+  90% { opacity: 0.6; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.welcome-ring {
+  animation: ringExpand 5s ease-out infinite;
+}
+
+@keyframes ringExpand {
+  0% { transform: translate(-50%, -50%) scale(0.2); opacity: 0.9; }
+  100% { transform: translate(-50%, -50%) scale(6); opacity: 0; }
+}
+
+.welcome-bracket {
+  animation: bracketPulse 3s ease-in-out infinite;
+}
+
+@keyframes bracketPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; border-color: rgba(200, 80, 255, 0.9); }
+}
+
+.welcome-chip {
+  animation: chipFloat linear infinite;
+}
+
+@keyframes chipFloat {
+  0%, 100% { transform: translateY(0) rotate(-1deg); opacity: 0.4; }
+  50% { transform: translateY(-18px) rotate(1deg); opacity: 0.8; }
+}
+
+.welcome-streak {
+  animation: streak linear infinite;
+}
+
+@keyframes streak {
+  0% { left: -40%; width: 30%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { left: 110%; width: 30%; opacity: 0; }
+}
+
+.welcome-mark-spin {
+  animation: markSpin 10s linear infinite;
+}
+
+.welcome-mark-spin-reverse {
+  animation: markSpin 10s linear infinite reverse;
+}
+
+@keyframes markSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

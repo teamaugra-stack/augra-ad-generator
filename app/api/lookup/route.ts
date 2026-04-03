@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 const CLICKUP_LIST_ID = "901521864851";
 
 // Universal ad types that apply to any practice

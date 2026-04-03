@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ClientData, AdCopyData, AdLayout } from "@/types/chat";
 import EditChat from "@/components/EditChat";
+import WelcomeScreen from "@/components/WelcomeScreen";
 
 // ===== Step Components =====
 
@@ -327,6 +328,7 @@ function AppContent() {
   const searchParams = useSearchParams();
   const [clientData, setClientData] = useState<ClientData | null>(null);
   const [clientLoading, setClientLoading] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
 
   // Wizard state
   const [step, setStep] = useState(1);
@@ -357,7 +359,7 @@ function AppContent() {
     setClientLoading(true);
     fetch(`/api/lookup?company=${encodeURIComponent(company)}`)
       .then((res) => res.json())
-      .then((data) => { if (data.found) setClientData(data.client); })
+      .then((data) => { if (data.found) { setClientData(data.client); setShowWelcome(true); } })
       .catch(() => {})
       .finally(() => setClientLoading(false));
   }, [searchParams]);
@@ -449,6 +451,17 @@ function AppContent() {
           <p className="text-sm text-neutral-400 animate-pulse">Loading brand profile...</p>
         </div>
       </div>
+    );
+  }
+
+  // Welcome screen for client UTM flow
+  if (showWelcome && clientData) {
+    return (
+      <WelcomeScreen
+        clientName={clientData.name}
+        businessName={clientData.businessName}
+        onContinue={() => setShowWelcome(false)}
+      />
     );
   }
 
