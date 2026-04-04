@@ -103,3 +103,58 @@ export interface ClientData {
   onboardingDoc: string;
   serviceCategories?: string[];
 }
+
+export interface TypographySegment {
+  text: string;
+  font_family: string; // "Inter" | "Playfair" | "BebasNeue" | "DancingScript" | "Outfit" | "RobotoSlab" | "Oswald"
+  font_weight: number; // 400 or 700
+  font_style: "normal" | "italic";
+  font_size_factor: number; // multiplier: 1.0 = normal, 2.0 = double
+  color: string; // hex or rgba
+  letter_spacing: string;
+  text_transform: "uppercase" | "lowercase" | "none";
+}
+
+export interface TypographyDesign {
+  headline_segments: TypographySegment[];
+  subheadline: {
+    text: string;
+    font_family: string;
+    font_weight: number;
+    color: string;
+    font_size: number;
+  };
+  cta: {
+    text: string;
+    style: "pill_white" | "pill_dark" | "outline" | "underline" | "none";
+    font_family: string;
+  };
+  offer?: {
+    text: string;
+    color: string;
+    background: string;
+  };
+  text_position: "top-left" | "top-center" | "center" | "bottom-left" | "bottom-center" | "left-strip" | "right-strip" | "split-top-bottom";
+  text_alignment: "left" | "center" | "right";
+  scrim_style: string;
+  accent_color: string;
+  decorative: string;
+}
+
+export interface CreativeConcept {
+  concept_name: string;
+  visual_metaphor: string;
+  emotional_angle: string;
+  image_prompt: string;
+  negative_prompt: string;
+  edit_instruction?: string;
+  text_placement_strategy: string;
+  suggested_palette: { primary: string; accent: string; text: string };
+  model_selection: string;
+}
+
+export interface ConceptResponse {
+  concepts: CreativeConcept[];
+  ad_copy: AdCopyData;
+  trust_line: string;
+}

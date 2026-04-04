@@ -386,7 +386,14 @@ function AppContent() {
       .finally(() => setClientLoading(false));
   }, [searchParams]);
 
-  const LOADING_MSGS = ["Analyzing your brief...", "Selecting AI model...", "Generating creative...", "Compositing text...", "Almost there..."];
+  const LOADING_MSGS = [
+    "Brainstorming creative concepts...",
+    "Developing visual metaphors...",
+    "Generating your image with Nano Banana Pro...",
+    "Designing typography composition...",
+    "Compositing final ad creative...",
+    "Almost there...",
+  ];
 
   const handleGenerate = async () => {
     setLoading(true); setError(""); setResult(null); setLoadingMsg(0); setStep(4);
