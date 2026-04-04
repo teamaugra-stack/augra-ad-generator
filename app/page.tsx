@@ -276,13 +276,6 @@ function ResultView({ result, adState, onUpdate, onNewAd, clientName }: {
           <button onClick={() => handleDownload(result.imageUrl)} className="btn-next !px-5 !py-2 !text-xs !rounded-full !shadow-none">
             Download Ad
           </button>
-          {/* Download raw background (no text) */}
-          {result.bgImageUrl && (
-            <button onClick={() => handleDownload(result.bgImageUrl!, "-bg-only")}
-              className="px-4 py-2 rounded-full text-xs text-neutral-400 bg-white/[0.04] border border-white/[0.06] hover:text-white hover:border-white/[0.15] transition-all cursor-pointer">
-              Background Only
-            </button>
-          )}
           <button onClick={() => setShowInfo(!showInfo)}
             className="text-xs text-neutral-600 hover:text-neutral-400 transition-colors px-3 py-2 cursor-pointer">
             {showInfo ? "Hide" : "Info"}

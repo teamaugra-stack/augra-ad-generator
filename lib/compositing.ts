@@ -1,8 +1,12 @@
 import satori from "satori";
 import { Resvg } from "@resvg/resvg-js";
 import sharp from "sharp";
+import * as fal from "@fal-ai/serverless-client";
 import { readFileSync } from "fs";
 import { join } from "path";
+
+// Configure FAL for storage uploads
+fal.config({ credentials: process.env.FAL_KEY });
 import type { AdCopyData, AdLayout, TypographyDesign, TypographySegment } from "@/types/chat";
 
 // Load fonts at module level
@@ -352,8 +356,12 @@ export async function compositeAdImage(
     .png()
     .toBuffer();
 
+  // Upload to FAL storage instead of returning base64
+  const file = new File([new Uint8Array(result)], "ad-output.png", { type: "image/png" });
+  const uploadedUrl = await fal.storage.upload(file);
+
   return {
-    composited: `data:image/png;base64,${result.toString("base64")}`,
+    composited: uploadedUrl,
     bgUrl: bgSource,
   };
 }
@@ -692,8 +700,12 @@ export async function compositeAdImageV2(
     .png()
     .toBuffer();
 
+  // Upload to FAL storage instead of returning base64
+  const file = new File([new Uint8Array(result)], "ad-output-v2.png", { type: "image/png" });
+  const uploadedUrl = await fal.storage.upload(file);
+
   return {
-    composited: `data:image/png;base64,${result.toString("base64")}`,
+    composited: uploadedUrl,
     bgUrl: bgSource,
   };
 }
