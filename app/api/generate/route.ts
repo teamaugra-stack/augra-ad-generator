@@ -19,6 +19,10 @@ async function uploadToFal(base64: string): Promise<string> {
   return await fal.storage.upload(file);
 }
 
+// ===== SKIN REALISM ENHANCEMENT (appended to every prompt) =====
+
+const SKIN_REALISM_SUFFIX = `\n\nEnhance this image to achieve extremely realistic professional skin texture. Preserve the original face, identity, and proportions exactly. Add natural skin pores, subtle imperfections, realistic micro-texture, and true-to-life skin detail. Maintain natural skin tones and soft transitions in light. Professional fashion photography look, high-end editorial quality, photorealistic skin, ultra-detailed, natural lighting, RAW photo quality, high dynamic range, sharp focus, no plastic skin, no artificial smoothing.\nVisible pores, natural skin texture, subtle imperfections, realistic human skin, shot on medium format camera, RAW photo quality.\nPreserve original identity, do not change the face, same person as the input image.\nShot on Phase One medium format camera, 80mm lens, studio lighting.`;
+
 // ===== MODEL GENERATION FUNCTIONS =====
 
 async function generateWithNanoBanana(
@@ -26,7 +30,8 @@ async function generateWithNanoBanana(
   imageUrl?: string
 ): Promise<string | null> {
   try {
-    const input: Record<string, unknown> = { prompt, resolution: "1K" };
+    const fullPrompt = prompt + SKIN_REALISM_SUFFIX;
+    const input: Record<string, unknown> = { prompt: fullPrompt, resolution: "1K" };
     if (imageUrl) input.image_urls = [imageUrl];
     const model = imageUrl ? "fal-ai/nano-banana-pro/edit" : "fal-ai/nano-banana-pro";
     const result = (await fal.run(model, { input })) as FalResult;
@@ -43,9 +48,7 @@ async function generateWithRecraft(
   imageUrl?: string
 ): Promise<string | null> {
   try {
-    // Recraft V3 doesn't support image editing — if there's a reference image,
-    // we mention it in the prompt but can't pass the actual image
-    let fullPrompt = prompt;
+    let fullPrompt = prompt + SKIN_REALISM_SUFFIX;
     if (imageUrl) {
       fullPrompt += ` Use the provided reference image as style and composition guidance. Match its visual style, lighting, and feel.`;
     }
