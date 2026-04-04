@@ -621,7 +621,15 @@ function AppContent() {
           {step === 3 && (
             <motion.div key="s3" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} transition={{ duration: 0.3 }}
               className="flex flex-col items-center w-full">
-              <StepHeader stepNum={3} total={4} title="Reference" highlight="images" subtitle="Upload images to edit or use as style reference. Or skip." />
+              <StepHeader stepNum={3} total={4} title="Reference" highlight="images" subtitle="Upload real photos of patients or practitioners, or skip for no-person ads." />
+
+              {/* Compliance notice */}
+              <div className="w-full max-w-[580px] mb-5 p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                <p className="text-xs text-neutral-400 leading-relaxed">
+                  <span className="text-[var(--teal)] font-semibold">Compliance Notice:</span> If you want a person in this ad, you must upload a real photo of that patient or practitioner. AI-generated or stock people are not permitted in medical ads. Uploaded photos will not be altered in the area being treated.
+                </p>
+              </div>
+
               <StepUpload files={referenceImages} setFiles={setReferenceImages} imageDescription={imageDescription} setImageDescription={setImageDescription} />
               {error && <div className="w-full max-w-[580px] mt-4 p-4 rounded-xl bg-red-500/[0.06] border border-red-500/20"><p className="text-sm text-red-400">{error}</p></div>}
               <div className="cta-row">
