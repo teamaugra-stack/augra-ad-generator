@@ -5,10 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ClientData, AdCopyData, AdLayout } from "@/types/chat";
 import WelcomeScreen from "@/components/WelcomeScreen";
-import dynamic from "next/dynamic";
+import EditChat from "@/components/EditChat";
 import { getCategoryMeta, groupCategories } from "@/lib/category-meta";
-
-const AdCanvasEditor = dynamic(() => import("@/components/AdCanvasEditor"), { ssr: false });
 
 // ===== TYPES =====
 
@@ -247,106 +245,85 @@ function StepHeader({ stepNum, total, title, highlight, subtitle }: { stepNum: n
 
 // ===== RESULT VIEW =====
 
-function ResultView({ result, adState, onUpdate, onNewAd }: {
+function ResultView({ result, adState, onUpdate, onNewAd, clientName }: {
   result: GenerationResult;
   adState: { currentBgImageUrl: string; adCopy: AdCopyData; layout: AdLayout; imagePrompt: string; modelUsed: string; outputFormat: string; originalInputs: { adType: string; procedure: string; keyMessage: string; brandAssetNote: string } };
   onUpdate: (u: { imageUrl: string; bgImageUrl: string; adCopy: AdCopyData; layout: AdLayout }) => void;
   onNewAd: () => void;
+  clientName?: string;
 }) {
-  const [editMode, setEditMode] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
 
-  const handleDownload = async () => {
+  const handleDownload = async (url: string, suffix: string = "") => {
     try {
-      const r = await fetch(result.imageUrl); const b = await r.blob(); const u = URL.createObjectURL(b);
-      const a = document.createElement("a"); a.href = u; a.download = `augra-ad-${Date.now()}.png`;
+      const r = await fetch(url); const b = await r.blob(); const u = URL.createObjectURL(b);
+      const a = document.createElement("a"); a.href = u; a.download = `augra-ad${suffix}-${Date.now()}.png`;
       document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(u);
-    } catch { window.open(result.imageUrl, "_blank"); }
+    } catch { window.open(url, "_blank"); }
   };
 
-  // ===== RESULT VIEW (not editing) =====
-  if (!editMode) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-60px)] p-6">
-        {/* Generated image */}
+  return (
+    <div className="flex flex-col h-[calc(100vh-60px)]">
+      {/* Top toolbar */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.04]">
+        <button onClick={onNewAd} className="text-xs text-neutral-500 hover:text-white transition-colors flex items-center gap-1 cursor-pointer">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+          New Ad
+        </button>
+        <div className="flex items-center gap-2">
+          {/* Download with text overlay */}
+          <button onClick={() => handleDownload(result.imageUrl)} className="btn-next !px-5 !py-2 !text-xs !rounded-full !shadow-none">
+            Download Ad
+          </button>
+          {/* Download raw background (no text) */}
+          {result.bgImageUrl && (
+            <button onClick={() => handleDownload(result.bgImageUrl!, "-bg-only")}
+              className="px-4 py-2 rounded-full text-xs text-neutral-400 bg-white/[0.04] border border-white/[0.06] hover:text-white hover:border-white/[0.15] transition-all cursor-pointer">
+              Background Only
+            </button>
+          )}
+          <button onClick={() => setShowInfo(!showInfo)}
+            className="text-xs text-neutral-600 hover:text-neutral-400 transition-colors px-3 py-2 cursor-pointer">
+            {showInfo ? "Hide" : "Info"}
+          </button>
+        </div>
+      </div>
+
+      {/* Image hero — centered */}
+      <div className="flex-1 flex items-center justify-center p-6 overflow-hidden relative">
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
+          key={result.imageUrl.slice(-20)}
+          initial={{ opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-          className="relative mb-8"
+          transition={{ duration: 0.4 }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={result.imageUrl}
             alt="Generated ad"
-            className="max-h-[55vh] w-auto rounded-xl border border-white/[0.08] shadow-2xl shadow-black/50"
+            className="max-h-[58vh] w-auto rounded-xl border border-white/[0.08] shadow-2xl shadow-black/50"
           />
         </motion.div>
 
-        {/* Action buttons */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.5 }}
-          className="flex items-center gap-3"
-        >
-          <button onClick={handleDownload} className="btn-next !rounded-full !px-8 !py-3.5 !text-sm">
-            Download
-          </button>
-          <button
-            onClick={() => setEditMode(true)}
-            className="px-8 py-3.5 rounded-full text-sm font-bold cursor-pointer transition-all duration-300"
-            style={{
-              background: "linear-gradient(135deg, rgba(14,240,192,0.15) 0%, rgba(155,61,255,0.15) 100%)",
-              border: "1px solid rgba(14,240,192,0.4)",
-              color: "rgba(14,240,192,0.95)",
-              boxShadow: "0 0 20px rgba(14,240,192,0.15)",
-            }}
-          >
-            Edit This Ad ✦
-          </button>
-          <button onClick={onNewAd} className="btn-back !rounded-full !px-6 !py-3.5 !text-sm">
-            New Ad
-          </button>
-        </motion.div>
-
-        {/* Ad copy summary */}
-        {result.adCopy && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="mt-6 text-center max-w-md"
-          >
-            <p className="text-sm text-white font-semibold">{result.adCopy.headline}</p>
-            <p className="text-xs text-neutral-500 mt-1">{result.adCopy.subheadline}</p>
-          </motion.div>
-        )}
+        {/* Info overlay */}
+        <AnimatePresence>
+          {showInfo && result.adCopy && (
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
+              className="absolute right-6 top-6 w-72 p-4 rounded-xl bg-black/80 backdrop-blur-lg border border-white/[0.08] space-y-2">
+              <p className="text-[10px] text-neutral-500 uppercase tracking-widest">Ad Details</p>
+              <p className="text-sm text-white font-semibold">{result.adCopy.headline}</p>
+              <p className="text-xs text-neutral-400">{result.adCopy.subheadline}</p>
+              {result.adCopy.offer && <p className="text-xs text-purple-400">{result.adCopy.offer}</p>}
+              <p className="text-xs text-neutral-500">CTA: {result.adCopy.cta}</p>
+              <p className="text-[10px] text-neutral-600 mt-2">Model: {result.modelUsed}</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-    );
-  }
 
-  // ===== EDIT MODE (Canvas Editor) =====
-  // Use the raw background image (without text overlay) for the canvas
-  // so users can position text themselves
-  const bgUrl = result.bgImageUrl || result.imageUrl;
-
-  return (
-    <AdCanvasEditor
-      backgroundImageUrl={bgUrl}
-      adCopy={result.adCopy || { headline: "", subheadline: "", cta: "", offer: "" }}
-      accentColor={adState.layout?.accent_color || "#D4A574"}
-      onExport={(dataUrl) => {
-        // Update the result with the canvas export
-        onUpdate({
-          imageUrl: dataUrl,
-          bgImageUrl: result.bgImageUrl || "",
-          adCopy: result.adCopy || { headline: "", subheadline: "", cta: "", offer: "" },
-          layout: result.layout || adState.layout,
-        });
-        setEditMode(false);
-      }}
-      onBack={() => setEditMode(false)}
-    />
+      {/* Chat bar at bottom — Higgsfield style */}
+      <EditChat initialAdState={adState} clientName={clientName} onUpdate={onUpdate} />
+    </div>
   );
 }
 
@@ -454,6 +431,7 @@ function AppContent() {
             adState={{ currentBgImageUrl: result.bgImageUrl || "", adCopy: result.adCopy || { headline: "", subheadline: "", cta: "", offer: "" }, layout: result.layout || {} as AdLayout, imagePrompt: result.prompt, modelUsed: result.modelUsed || "flux_standard", outputFormat, originalInputs: { adType, procedure, keyMessage, brandAssetNote } }}
             onUpdate={(u) => setResult((p) => p ? { ...p, imageUrl: u.imageUrl, bgImageUrl: u.bgImageUrl, adCopy: u.adCopy, layout: u.layout } : p)}
             onNewAd={handleNewAd}
+            clientName={clientData?.businessName}
           />
         </div>
       </div>
