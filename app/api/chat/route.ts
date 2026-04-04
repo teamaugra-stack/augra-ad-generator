@@ -108,7 +108,9 @@ Current Image URL: ${adState.currentBgImageUrl}`;
         ? " Portrait 4:5 format."
         : " Square 1:1 format.";
 
-    const fullEditPrompt = parsed.edit_prompt + formatSuffix;
+    const skinRealism = "\n\nEnhance this image to achieve extremely realistic professional skin texture. Preserve the original face, identity, and proportions exactly. Add natural skin pores, subtle imperfections, realistic micro-texture, and true-to-life skin detail. Professional fashion photography look, photorealistic skin, ultra-detailed, natural lighting, RAW photo quality. Shot on Phase One medium format camera, 80mm lens.";
+
+    const fullEditPrompt = parsed.edit_prompt + formatSuffix + skinRealism;
 
     // Determine which model to use
     const model = preferredModel || "nano_banana_pro";

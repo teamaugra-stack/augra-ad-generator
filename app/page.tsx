@@ -532,10 +532,16 @@ function AppContent() {
                   className="group relative rounded-xl overflow-hidden border border-white/[0.06] hover:border-[var(--purple-border)] transition-all duration-300 cursor-pointer"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={v.imageUrl} alt={`Variation ${i + 1}`} className="w-full aspect-square object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="text-xs font-bold text-white bg-[var(--purple)] px-3 py-1 rounded-full">Select #{i + 1}</span>
+                  <img src={v.imageUrl} alt={`Variation ${i + 1}`} className="w-full aspect-[4/5] object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                  {/* Model label — always visible */}
+                  <div className="absolute top-3 left-3">
+                    <span className="text-[10px] font-mono text-white/60 bg-black/40 px-2 py-1 rounded-md backdrop-blur-sm">
+                      {i === 0 ? "Nano Banana Pro" : "Recraft V3"}
+                    </span>
+                  </div>
+                  <div className="absolute bottom-3 left-3 right-3 flex justify-between items-center">
+                    <span className="text-xs font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity bg-[var(--purple)] px-3 py-1 rounded-full">Select</span>
                   </div>
                 </motion.button>
               ))}

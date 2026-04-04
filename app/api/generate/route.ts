@@ -165,11 +165,16 @@ Reference Image Provided: ${hasImage ? "Yes — user uploaded an image they want
 
     const promptWithFormat = parsed.full_ad_prompt + formatSuffix;
 
-    // Each model produces 1 ad — user picks their favorite
+    // Each model produces 1 ad — run BOTH in parallel
+    console.log("Starting dual generation: Nano Banana Pro + Recraft V3");
+
     const [nanoBananaUrl, recraftUrl] = await Promise.all([
       generateWithNanoBanana(promptWithFormat, falImageUrl),
       generateWithRecraft(promptWithFormat, imageSize, falImageUrl),
     ]);
+
+    console.log("Nano Banana result:", nanoBananaUrl ? "SUCCESS" : "FAILED");
+    console.log("Recraft result:", recraftUrl ? "SUCCESS" : "FAILED");
 
     // Log both model calls
     if (nanoBananaUrl) logUsage(clientName, "generate", "fal-ai/nano-banana-pro");
