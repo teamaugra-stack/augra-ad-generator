@@ -328,7 +328,7 @@ function ResultView({ result, adState, onUpdate, onNewAd }: {
   // ===== EDIT MODE (Canvas Editor) =====
   // Use the raw background image (without text overlay) for the canvas
   // so users can position text themselves
-  const bgUrl = result.bgImageUrl && result.bgImageUrl !== "(embedded)" ? result.bgImageUrl : result.imageUrl;
+  const bgUrl = result.bgImageUrl || result.imageUrl;
 
   return (
     <AdCanvasEditor

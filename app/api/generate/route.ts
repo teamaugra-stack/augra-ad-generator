@@ -26,9 +26,12 @@ async function generateWithFluxStandard(prompt: string, imageSize: string): Prom
     const result = (await fal.run("fal-ai/flux-2-pro", {
       input: { prompt, image_size: imageSize, num_images: 1 },
     })) as FalResult;
-    if (result?.images?.[0]?.url) return result.images[0].url;
-  } catch {
-    // Fallback to FLUX 1.1
+    if (result?.images?.[0]?.url) {
+      console.log("Using FLUX.2 Pro for generation");
+      return result.images[0].url;
+    }
+  } catch (e) {
+    console.log("FLUX.2 Pro unavailable, falling back to FLUX 1.1:", e instanceof Error ? e.message : "");
   }
   const result = (await fal.run("fal-ai/flux-pro/v1.1", {
     input: { prompt, image_size: imageSize, num_images: 1, safety_tolerance: "2" },
@@ -211,7 +214,7 @@ Reference Image Provided: ${hasImage ? "Yes — user uploaded an image they want
 
     return NextResponse.json({
       imageUrl: composited,
-      bgImageUrl: bgImageUrl.startsWith("data:") ? "(embedded)" : bgImageUrl,
+      bgImageUrl: bgImageUrl,
       prompt: editPrompt,
       adCopy,
       layout,

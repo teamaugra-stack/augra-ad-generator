@@ -268,18 +268,63 @@ ALWAYS use #FFFFFF (white) for headline_color on dark images. NEVER dark text on
 For split_screen: dark text on bright side, white on dark side.
 For value_stack/voucher on light background: headline can be brand-colored.
 
-Match layout to clinic type:
-Plastic Surgery: centered_hero or minimal_center, italic headlines, dusty rose/gold, vignette scrim
-Med Spa: editorial_top or split_left, mixed case, rose gold, top_gradient
-Dentistry: centered_hero or bottom_heavy, uppercase, sky blue, bottom_gradient
-Chiro/Ortho: split_left or editorial_top, bold uppercase, teal/red, left_gradient
-TRT/Men's: bottom_heavy or full_overlay, 4xl uppercase, steel/gold, full_overlay
-Weight Loss: editorial_top, uppercase, green/orange, top_gradient
-Peptide: minimal_center, mixed/italic, teal/slate, corner_marks
-Promotions: centered_hero or full_overlay, border_frame, gold
-Authority/Doctor: split_left, mixed, navy/gold, left_gradient
+=== LAYOUT VARIETY IS MANDATORY ===
 
-VARY YOUR DESIGNS. Each generation should look unique.
+You MUST cycle through different layout styles. NEVER default to editorial_top with top-left headline. Here is the rotation — pick based on the ad format and clinic type, but VARY between these:
+
+LAYOUT STYLE OPTIONS (use ALL of them across generations):
+- "centered_hero" — headline + subheadline centered in the middle of the image. Good for hero statements, luxury, impact.
+- "bottom_heavy" — ALL text at the bottom 40%. Top 60% is pure image. Good for showing the subject clearly.
+- "split_left" — text on the left half only. Right side is pure image. Good for portraits, doctor positioning.
+- "split_right" — text on the right half. Left side is image. Alternate to split_left.
+- "minimal_center" — just headline + CTA centered, no subheadline. Ultra clean, high impact.
+- "full_overlay" — text centered with full semi-transparent overlay. Good for offers, promotions.
+- "editorial_top" — headline at top, CTA at bottom. Classic editorial. Use this SOMETIMES, not always.
+
+HEADLINE POSITION VARIETY:
+- Do NOT always use "top-left". Alternate between: "top-center", "center", "bottom-center", "bottom-left"
+- For centered_hero: use "center"
+- For bottom_heavy: use "bottom-left" or "bottom-center"
+- For split_left: use "center" (within the left half)
+- For minimal_center: use "center"
+
+HEADLINE SIZE VARIETY:
+- "xl" (32px) — for long headlines with subtext
+- "2xl" (40px) — medium impact
+- "3xl" (50px) — standard bold
+- "4xl" (64px) — high impact, short headlines only (4 words or less)
+Vary between these. Do NOT always use 3xl.
+
+HEADLINE STYLE VARIETY:
+- "uppercase" — bold, modern, high energy (TRT, weight loss, chiro)
+- "mixed" — elegant, editorial (med spa, plastic surgery, authority)
+- "italic" — luxurious, refined (peptide, anti-aging, practice branding)
+
+CTA STYLE VARIETY:
+- "pill_white" — classic white pill button
+- "pill_dark" — dark pill with accent border (luxury)
+- "outline" — outlined box (clinical, professional)
+- "underline" — underlined text with arrow (editorial)
+- "none" — no CTA (grotesque hook format)
+
+DECORATIVE VARIETY:
+- "none" — clean
+- "line_accent" — accent color line above headline
+- "border_frame" — thin frame around the entire ad
+- "corner_marks" — corner bracket marks (luxury, clinical)
+
+Match layout to clinic type but ALWAYS vary:
+Plastic Surgery: centered_hero, minimal_center, split_right — italic/mixed, dusty rose/gold, vignette
+Med Spa: split_left, bottom_heavy, editorial_top — mixed, rose gold, top_gradient
+Dentistry: centered_hero, bottom_heavy — uppercase, sky blue, bottom_gradient
+Chiro/Ortho: split_left, bottom_heavy — uppercase bold, teal/red, left_gradient
+TRT/Men's: bottom_heavy, full_overlay, minimal_center — 4xl uppercase, steel/gold
+Weight Loss: editorial_top, centered_hero — uppercase, green/orange
+Peptide: minimal_center, split_right — italic, teal/slate, corner_marks
+Promotions: full_overlay, centered_hero — border_frame, gold
+Authority/Doctor: split_left, split_right — mixed, navy/gold
+
+CRITICAL: Each generation MUST use a different combination. If the last ad was editorial_top with top-left headline, the next MUST use a different style + position.
 
 ====================================================================
 SECTION 10: FINAL RULES
