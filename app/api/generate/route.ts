@@ -128,12 +128,27 @@ Reference Image Provided: ${hasImage ? "Yes — user uploaded an image they want
     };
 
     try {
-      const cleaned = rawText.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      // Aggressive cleanup: strip markdown, find JSON
+      let cleaned = rawText
+        .replace(/```json\s*/g, "")
+        .replace(/```\s*/g, "")
+        .replace(/^[^{]*/, "") // strip anything before first {
+        .trim();
       const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-      parsed = JSON.parse(jsonMatch ? jsonMatch[0] : cleaned);
+      if (jsonMatch) cleaned = jsonMatch[0];
+      parsed = JSON.parse(cleaned);
     } catch {
-      console.error("Failed to parse Claude response:", rawText.slice(0, 300));
-      return NextResponse.json({ error: "Failed to parse ad concept. Try again." }, { status: 500 });
+      console.error("Failed to parse Claude response. Raw text:", rawText.slice(0, 500));
+      // FALLBACK: Build a simple prompt ourselves if Claude fails
+      parsed = {
+        full_ad_prompt: `A professional medical advertisement for ${adType}. ${procedure} clinic ad. ${keyMessage}. Bold headline text reading "${procedure.toUpperCase()}" in white serif font at the top. Subtext below: "${keyMessage.slice(0, 80)}". A white pill-shaped CTA button at the bottom reading "BOOK CONSULTATION". Professional advertising design, magazine quality layout, clean typography, all text perfectly rendered and legible. Photorealistic skin, natural lighting, high-end editorial quality.`,
+        model: "nano_banana_pro",
+        headline: procedure,
+        subheadline: keyMessage.slice(0, 80),
+        cta: "Book Consultation",
+        offer: "",
+      };
+      console.log("Using fallback prompt due to parse failure");
     }
 
     console.log("Headline:", parsed.headline);
