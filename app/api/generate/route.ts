@@ -20,23 +20,24 @@ async function uploadToFal(base64: string): Promise<string> {
   return await fal.storage.upload(file);
 }
 
-async function generateWithFluxStandard(prompt: string, imageSize: string): Promise<string> {
+async function generateWithFluxStandard(prompt: string, imageSize: string, count: number = 1): Promise<string[]> {
   // Try FLUX.2 Pro first (better quality), fall back to FLUX 1.1
   try {
     const result = (await fal.run("fal-ai/flux-2-pro", {
-      input: { prompt, image_size: imageSize, num_images: 1 },
+      input: { prompt, image_size: imageSize, num_images: count },
     })) as FalResult;
-    if (result?.images?.[0]?.url) {
-      console.log("Using FLUX.2 Pro for generation");
-      return result.images[0].url;
+    const urls = result?.images?.map(img => img.url).filter(Boolean) || [];
+    if (urls.length > 0) {
+      console.log(`Using FLUX.2 Pro — generated ${urls.length} images`);
+      return urls;
     }
   } catch (e) {
     console.log("FLUX.2 Pro unavailable, falling back to FLUX 1.1:", e instanceof Error ? e.message : "");
   }
   const result = (await fal.run("fal-ai/flux-pro/v1.1", {
-    input: { prompt, image_size: imageSize, num_images: 1, safety_tolerance: "2" },
+    input: { prompt, image_size: imageSize, num_images: count, safety_tolerance: "2" },
   })) as FalResult;
-  return result?.images?.[0]?.url || "";
+  return result?.images?.map(img => img.url).filter(Boolean) || [];
 }
 
 async function generateWithKontext(imageUrl: string, editInstruction: string, imageSize: string): Promise<string> {
@@ -149,46 +150,67 @@ Reference Image Provided: ${hasImage ? "Yes — user uploaded an image they want
       falImageUrl = await uploadToFal(referenceImageBase64);
     }
 
-    // Step 2: Route to selected model
-    let bgImageUrl = "";
+    // Step 2: Route to selected model — generate 4 variations
+    const NUM_VARIATIONS = 4;
+    let bgImageUrls: string[] = [];
 
     try {
       switch (modelKey) {
         case "flux_kontext":
-          bgImageUrl = falImageUrl
-            ? await generateWithKontext(falImageUrl, editPrompt, imageSize)
-            : await generateWithFluxStandard(parsed.image_prompt, imageSize);
+          if (falImageUrl) {
+            // Kontext doesn't support num_images > 1, run in parallel
+            const kontextResults = await Promise.all(
+              Array.from({ length: NUM_VARIATIONS }, () => generateWithKontext(falImageUrl!, editPrompt, imageSize))
+            );
+            bgImageUrls = kontextResults.filter(Boolean);
+          } else {
+            bgImageUrls = await generateWithFluxStandard(parsed.image_prompt, imageSize, NUM_VARIATIONS);
+          }
           break;
         case "gpt_image":
-          bgImageUrl = await generateWithGPTImage(editPrompt, falImageUrl);
+          // GPT Image doesn't support batch, run in parallel
+          const gptResults = await Promise.all(
+            Array.from({ length: Math.min(NUM_VARIATIONS, 2) }, () => generateWithGPTImage(editPrompt, falImageUrl))
+          );
+          bgImageUrls = gptResults.filter(Boolean);
           break;
         case "nano_banana_pro":
-          bgImageUrl = await generateWithNanoBananaPro(editPrompt, falImageUrl);
+          // Nano Banana runs 1 at a time, do 2 for speed
+          const nbResults = await Promise.all(
+            Array.from({ length: Math.min(NUM_VARIATIONS, 2) }, () => generateWithNanoBananaPro(editPrompt, falImageUrl))
+          );
+          bgImageUrls = nbResults.filter(Boolean);
           break;
         case "nano_banana_2":
-          bgImageUrl = await generateWithNanoBanana2(editPrompt, falImageUrl);
+          // Slowest model — just 1
+          const nb2Url = await generateWithNanoBanana2(editPrompt, falImageUrl);
+          if (nb2Url) bgImageUrls = [nb2Url];
           break;
         case "seedream":
-          bgImageUrl = await generateWithSeedream(editPrompt, falImageUrl);
+          const sdResults = await Promise.all(
+            Array.from({ length: Math.min(NUM_VARIATIONS, 2) }, () => generateWithSeedream(editPrompt, falImageUrl))
+          );
+          bgImageUrls = sdResults.filter(Boolean);
           break;
         case "flux_standard":
         default:
-          bgImageUrl = await generateWithFluxStandard(parsed.image_prompt, imageSize);
+          bgImageUrls = await generateWithFluxStandard(parsed.image_prompt, imageSize, NUM_VARIATIONS);
           break;
       }
     } catch (modelError) {
       const modelErrMsg = modelError instanceof Error ? modelError.message : String(modelError);
       console.error(`Model ${modelKey} failed: ${modelErrMsg}. Falling back...`);
-      if (modelKey !== "nano_banana_pro" && modelKey !== "flux_standard") {
-        try { bgImageUrl = await generateWithNanoBananaPro(editPrompt, falImageUrl); }
-        catch { bgImageUrl = await generateWithFluxStandard(parsed.image_prompt, imageSize); }
-      } else if (modelKey !== "flux_standard") {
-        bgImageUrl = await generateWithFluxStandard(parsed.image_prompt, imageSize);
-      } else { throw modelError; }
+      try {
+        bgImageUrls = await generateWithFluxStandard(parsed.image_prompt, imageSize, NUM_VARIATIONS);
+      } catch {
+        // Last resort: single image
+        const single = await generateWithFluxStandard(parsed.image_prompt, imageSize, 1);
+        bgImageUrls = single;
+      }
     }
 
-    if (!bgImageUrl) {
-      return NextResponse.json({ error: "Failed to generate image." }, { status: 500 });
+    if (bgImageUrls.length === 0) {
+      return NextResponse.json({ error: "Failed to generate images." }, { status: 500 });
     }
 
     // Log FAL model usage
@@ -202,7 +224,7 @@ Reference Image Provided: ${hasImage ? "Yes — user uploaded an image they want
     };
     logUsage(clientName, "generate", falModelMap[modelKey] || "fal-ai/flux-pro/v1.1");
 
-    // Step 3: Composite text overlay
+    // Step 3: Composite text overlay on all variations
     const adCopy = {
       headline: parsed.headline,
       subheadline: parsed.subheadline,
@@ -210,15 +232,27 @@ Reference Image Provided: ${hasImage ? "Yes — user uploaded an image they want
       offer: parsed.offer || "",
     };
 
-    const { composited } = await compositeAdImage(bgImageUrl, adCopy, layout, outputFormat);
+    // Composite text on each background in parallel
+    const variations = await Promise.all(
+      bgImageUrls.map(async (bgUrl) => {
+        try {
+          const { composited } = await compositeAdImage(bgUrl, adCopy, layout, outputFormat);
+          return { imageUrl: composited, bgImageUrl: bgUrl };
+        } catch {
+          return { imageUrl: bgUrl, bgImageUrl: bgUrl }; // fallback: raw background
+        }
+      })
+    );
 
+    // Return first as primary + all variations
     return NextResponse.json({
-      imageUrl: composited,
-      bgImageUrl: bgImageUrl,
+      imageUrl: variations[0].imageUrl,
+      bgImageUrl: variations[0].bgImageUrl,
       prompt: editPrompt,
       adCopy,
       layout,
       modelUsed: modelKey,
+      variations: variations.map(v => ({ imageUrl: v.imageUrl, bgImageUrl: v.bgImageUrl })),
     });
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);

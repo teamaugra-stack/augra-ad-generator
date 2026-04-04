@@ -17,6 +17,7 @@ interface GenerationResult {
   adCopy?: AdCopyData;
   layout?: AdLayout;
   modelUsed?: string;
+  variations?: { imageUrl: string; bgImageUrl: string }[];
 }
 
 // ===== STEP 1: AD TYPE SELECTOR =====
@@ -404,7 +405,11 @@ function AppContent() {
       });
       const data = await res.json();
       if (!res.ok || data.error) { setError(data.error || "Something went wrong."); setStep(3); }
-      else { setResult(data); setStep(5); }
+      else {
+        setResult(data);
+        // If variations exist, go to picker (step 5). Otherwise go straight to result (step 6)
+        setStep(data.variations?.length > 1 ? 5 : 6);
+      }
     } catch { setError("Connection error."); setStep(3); }
     finally { clearInterval(interval); setLoading(false); }
   };
@@ -419,12 +424,59 @@ function AppContent() {
     return <WelcomeScreen clientName={clientData.name} businessName={clientData.businessName} onContinue={() => setShowWelcome(false)} />;
   }
 
-  // Result view (step 5)
-  if (step === 5 && result) {
+  // Variation picker (step 5) — Midjourney-style grid
+  if (step === 5 && result?.variations && result.variations.length > 1) {
     return (
       <div className="min-h-screen bg-[#050507] relative overflow-hidden">
         <div className="hex-bg"><svg xmlns="http://www.w3.org/2000/svg" className="w-full h-full opacity-[0.13]"><defs><pattern id="hex" width="56" height="48.5" patternUnits="userSpaceOnUse"><polygon points="28,2 52,14.5 52,34 28,46.5 4,34 4,14.5" fill="none" stroke="rgba(155,61,255,0.7)" strokeWidth="0.5"/></pattern></defs><rect width="100%" height="100%" fill="url(#hex)"/></svg></div>
-        <NavBar step={5} totalSteps={4} clientName={clientData?.businessName} onNewAd={handleNewAd} />
+        <NavBar step={5} totalSteps={5} clientName={clientData?.businessName} onNewAd={handleNewAd} />
+        <div className="relative z-10 pt-[80px] px-6">
+          <div className="max-w-4xl mx-auto">
+            <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
+              <div className="step-label justify-center">Pick your favorite</div>
+              <h1 className="text-3xl md:text-4xl font-bold font-heading mt-4">{result.variations.length} <span className="bg-gradient-to-r from-[#c080ff] to-[var(--teal)] bg-clip-text text-transparent">variations</span></h1>
+              <p className="text-neutral-500 text-sm mt-2">Click the one you want to use and edit.</p>
+            </motion.div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {result.variations.map((v, i) => (
+                <motion.button
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  onClick={() => {
+                    setResult((prev) => prev ? { ...prev, imageUrl: v.imageUrl, bgImageUrl: v.bgImageUrl } : prev);
+                    setStep(6);
+                  }}
+                  className="group relative rounded-xl overflow-hidden border border-white/[0.06] hover:border-[var(--purple-border)] transition-all duration-300 cursor-pointer"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={v.imageUrl} alt={`Variation ${i + 1}`} className="w-full aspect-square object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="text-xs font-bold text-white bg-[var(--purple)] px-3 py-1 rounded-full">Select #{i + 1}</span>
+                  </div>
+                </motion.button>
+              ))}
+            </div>
+
+            <div className="flex justify-center mt-6 gap-3">
+              <button onClick={handleNewAd} className="btn-back !rounded-full !px-6 !py-3">Start Over</button>
+              <button onClick={() => handleGenerate()} className="btn-back !rounded-full !px-6 !py-3 !border-[var(--purple-border)] !text-[var(--purple)]">Regenerate</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Result + Edit view (step 6, or step 5 if only 1 variation)
+  if ((step === 6 || step === 5) && result) {
+    return (
+      <div className="min-h-screen bg-[#050507] relative overflow-hidden">
+        <div className="hex-bg"><svg xmlns="http://www.w3.org/2000/svg" className="w-full h-full opacity-[0.13]"><defs><pattern id="hexr" width="56" height="48.5" patternUnits="userSpaceOnUse"><polygon points="28,2 52,14.5 52,34 28,46.5 4,34 4,14.5" fill="none" stroke="rgba(155,61,255,0.7)" strokeWidth="0.5"/></pattern></defs><rect width="100%" height="100%" fill="url(#hexr)"/></svg></div>
+        <NavBar step={6} totalSteps={5} clientName={clientData?.businessName} onNewAd={handleNewAd} />
         <div className="relative z-10 pt-[60px]">
           <ResultView
             result={result}
