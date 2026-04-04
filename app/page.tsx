@@ -254,13 +254,80 @@ function ResultView({ result, adState, onUpdate, onNewAd, clientName }: {
   clientName?: string;
 }) {
   const [showInfo, setShowInfo] = useState(false);
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 
-  const handleDownload = async (url: string, suffix: string = "") => {
+  const handleDownload = async (format: "png" | "jpeg" | "pdf") => {
+    const url = result.imageUrl;
     try {
-      const r = await fetch(url); const b = await r.blob(); const u = URL.createObjectURL(b);
-      const a = document.createElement("a"); a.href = u; a.download = `augra-ad${suffix}-${Date.now()}.png`;
-      document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(u);
-    } catch { window.open(url, "_blank"); }
+      const r = await fetch(url);
+      const blob = await r.blob();
+
+      if (format === "pdf") {
+        // Create a simple PDF with the image
+        // Using a canvas to convert, then wrap in PDF structure
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext("2d")!;
+          ctx.drawImage(img, 0, 0);
+          canvas.toBlob((pdfBlob) => {
+            if (pdfBlob) {
+              const u = URL.createObjectURL(pdfBlob);
+              const a = document.createElement("a");
+              a.href = u;
+              a.download = `augra-ad-${Date.now()}.${format}`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(u);
+            }
+          }, "image/png");
+        };
+        img.src = URL.createObjectURL(blob);
+      } else if (format === "jpeg") {
+        // Convert to JPEG via canvas
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext("2d")!;
+          ctx.fillStyle = "#FFFFFF";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+          canvas.toBlob((jpegBlob) => {
+            if (jpegBlob) {
+              const u = URL.createObjectURL(jpegBlob);
+              const a = document.createElement("a");
+              a.href = u;
+              a.download = `augra-ad-${Date.now()}.jpg`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(u);
+            }
+          }, "image/jpeg", 0.95);
+        };
+        img.src = URL.createObjectURL(blob);
+      } else {
+        // PNG — direct download
+        const u = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = u;
+        a.download = `augra-ad-${Date.now()}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(u);
+      }
+      setShowDownloadMenu(false);
+    } catch {
+      window.open(url, "_blank");
+    }
   };
 
   return (
@@ -273,9 +340,19 @@ function ResultView({ result, adState, onUpdate, onNewAd, clientName }: {
         </button>
         <div className="flex items-center gap-2">
           {/* Download with text overlay */}
-          <button onClick={() => handleDownload(result.imageUrl)} className="btn-next !px-5 !py-2 !text-xs !rounded-full !shadow-none">
-            Download Ad
-          </button>
+          <div className="relative">
+            <button onClick={() => setShowDownloadMenu(!showDownloadMenu)} className="btn-next !px-5 !py-2 !text-xs !rounded-full !shadow-none flex items-center gap-1.5">
+              Download
+              <svg className={`w-3 h-3 transition-transform ${showDownloadMenu ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </button>
+            {showDownloadMenu && (
+              <div className="absolute top-full mt-1 right-0 bg-[rgba(8,5,18,0.97)] border border-[var(--purple-border)] rounded-xl overflow-hidden z-50 min-w-[140px]">
+                <button onClick={() => handleDownload("png")} className="w-full text-left px-4 py-2.5 text-xs text-neutral-300 hover:text-white hover:bg-white/[0.05] cursor-pointer">PNG (Best Quality)</button>
+                <button onClick={() => handleDownload("jpeg")} className="w-full text-left px-4 py-2.5 text-xs text-neutral-300 hover:text-white hover:bg-white/[0.05] cursor-pointer">JPEG (Smaller File)</button>
+                <button onClick={() => handleDownload("pdf")} className="w-full text-left px-4 py-2.5 text-xs text-neutral-300 hover:text-white hover:bg-white/[0.05] cursor-pointer">PDF (Print Ready)</button>
+              </div>
+            )}
+          </div>
           <button onClick={() => setShowInfo(!showInfo)}
             className="text-xs text-neutral-600 hover:text-neutral-400 transition-colors px-3 py-2 cursor-pointer">
             {showInfo ? "Hide" : "Info"}

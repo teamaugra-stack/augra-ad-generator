@@ -156,10 +156,19 @@ Reference Image Provided: ${hasImage ? "Yes — user uploaded an image they want
     // =============================================
     // STEP 2: Generate with BOTH models in parallel
     // =============================================
+    // Append aspect ratio to prompt so models know the format
+    const formatSuffix = outputFormat.includes("9:16")
+      ? " Vertical 9:16 story format, portrait orientation, taller than wide."
+      : outputFormat.includes("4:5")
+        ? " Portrait 4:5 format, slightly taller than wide."
+        : " Square 1:1 format, equal width and height.";
+
+    const promptWithFormat = parsed.full_ad_prompt + formatSuffix;
+
     // Each model produces 1 ad — user picks their favorite
     const [nanoBananaUrl, recraftUrl] = await Promise.all([
-      generateWithNanoBanana(parsed.full_ad_prompt, falImageUrl),
-      generateWithRecraft(parsed.full_ad_prompt, imageSize, falImageUrl),
+      generateWithNanoBanana(promptWithFormat, falImageUrl),
+      generateWithRecraft(promptWithFormat, imageSize, falImageUrl),
     ]);
 
     // Log both model calls
