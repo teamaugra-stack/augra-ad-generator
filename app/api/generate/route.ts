@@ -19,6 +19,48 @@ async function uploadToFal(base64: string): Promise<string> {
   return await fal.storage.upload(file);
 }
 
+// ===== MODEL GENERATION FUNCTIONS =====
+
+async function generateWithNanoBanana(
+  prompt: string,
+  imageUrl?: string
+): Promise<string | null> {
+  try {
+    const input: Record<string, unknown> = { prompt, resolution: "1K" };
+    if (imageUrl) input.image_urls = [imageUrl];
+    const model = imageUrl ? "fal-ai/nano-banana-pro/edit" : "fal-ai/nano-banana-pro";
+    const result = (await fal.run(model, { input })) as FalResult;
+    return result?.images?.[0]?.url || null;
+  } catch (e) {
+    console.error("Nano Banana failed:", e instanceof Error ? e.message : "");
+    return null;
+  }
+}
+
+async function generateWithRecraft(
+  prompt: string,
+  imageSize: string,
+  imageUrl?: string
+): Promise<string | null> {
+  try {
+    // Recraft V3 doesn't support image editing — if there's a reference image,
+    // we mention it in the prompt but can't pass the actual image
+    let fullPrompt = prompt;
+    if (imageUrl) {
+      fullPrompt += ` Use the provided reference image as style and composition guidance. Match its visual style, lighting, and feel.`;
+    }
+    const result = (await fal.run("fal-ai/recraft-v3", {
+      input: { prompt: fullPrompt, image_size: imageSize },
+    })) as FalResult;
+    return result?.images?.[0]?.url || null;
+  } catch (e) {
+    console.error("Recraft failed:", e instanceof Error ? e.message : "");
+    return null;
+  }
+}
+
+// ===== MAIN HANDLER =====
+
 export async function POST(request: NextRequest) {
   try {
     const {
@@ -40,7 +82,7 @@ Procedure/Service: ${procedure}
 Key Message & Context: ${keyMessage}
 Output Format: ${outputFormat}
 Brand Asset Note: ${brandAssetNote || "None"}
-Reference Image Provided: ${hasImage ? "Yes — user uploaded an image." : "No"}`;
+Reference Image Provided: ${hasImage ? "Yes — user uploaded an image they want used/edited in the ad." : "No"}`;
 
     if (referenceImageDescription) {
       userMessage += `\nUser's instruction for the image: ${referenceImageDescription}`;
@@ -49,7 +91,7 @@ Reference Image Provided: ${hasImage ? "Yes — user uploaded an image." : "No"}
       userMessage += `\n\n${clientContext}`;
     }
 
-    // Upload reference image if provided
+    // Upload reference image to FAL storage if provided
     let falImageUrl: string | undefined;
     if (hasImage) {
       falImageUrl = await uploadToFal(referenceImageBase64);
@@ -91,70 +133,53 @@ Reference Image Provided: ${hasImage ? "Yes — user uploaded an image." : "No"}
       return NextResponse.json({ error: "Failed to parse ad concept. Try again." }, { status: 500 });
     }
 
-    console.log("Claude selected model:", parsed.model);
     console.log("Headline:", parsed.headline);
 
     // =============================================
-    // STEP 2: Generate the COMPLETE ad in ONE model call
+    // STEP 2: Generate with BOTH models in parallel
     // =============================================
-    const modelKey = parsed.model || "nano_banana_pro";
-    let imageUrls: string[] = [];
-
-    // Generate 2 variations
-    const generateOne = async (prompt: string): Promise<string | null> => {
-      try {
-        if (modelKey === "recraft_v3") {
-          const result = (await fal.run("fal-ai/recraft-v3", {
-            input: { prompt, image_size: imageSize },
-          })) as FalResult;
-          return result?.images?.[0]?.url || null;
-        } else {
-          // Default: Nano Banana Pro
-          const input: Record<string, unknown> = { prompt, resolution: "1K" };
-          if (falImageUrl) {
-            input.image_urls = [falImageUrl];
-          }
-          const result = (await fal.run(
-            falImageUrl ? "fal-ai/nano-banana-pro/edit" : "fal-ai/nano-banana-pro",
-            { input }
-          )) as FalResult;
-          return result?.images?.[0]?.url || null;
-        }
-      } catch (e) {
-        console.error("Generation failed:", e instanceof Error ? e.message : "");
-        return null;
-      }
-    };
-
-    // Generate 2 variations in parallel
-    const results = await Promise.all([
-      generateOne(parsed.full_ad_prompt),
-      generateOne(parsed.full_ad_prompt),
+    // Each model produces 1 ad — user picks their favorite
+    const [nanoBananaUrl, recraftUrl] = await Promise.all([
+      generateWithNanoBanana(parsed.full_ad_prompt, falImageUrl),
+      generateWithRecraft(parsed.full_ad_prompt, imageSize, falImageUrl),
     ]);
 
-    imageUrls = results.filter((url): url is string => url !== null);
+    // Log both model calls
+    if (nanoBananaUrl) logUsage(clientName, "generate", "fal-ai/nano-banana-pro");
+    if (recraftUrl) logUsage(clientName, "generate", "fal-ai/recraft-v3");
 
-    // Fallback: try one more time with FLUX if both failed
-    if (imageUrls.length === 0) {
-      console.log("Both generations failed, trying FLUX fallback...");
+    // Build variations array — both models' outputs
+    const variations: { imageUrl: string; bgImageUrl: string; model: string }[] = [];
+
+    if (nanoBananaUrl) {
+      variations.push({ imageUrl: nanoBananaUrl, bgImageUrl: nanoBananaUrl, model: "Nano Banana Pro" });
+    }
+    if (recraftUrl) {
+      variations.push({ imageUrl: recraftUrl, bgImageUrl: recraftUrl, model: "Recraft V3" });
+    }
+
+    // Fallback: if both failed, try FLUX
+    if (variations.length === 0) {
+      console.log("Both models failed, trying FLUX fallback...");
       try {
         const result = (await fal.run("fal-ai/flux-pro/v1.1", {
           input: { prompt: parsed.full_ad_prompt, image_size: imageSize, num_images: 1, safety_tolerance: "2" },
         })) as FalResult;
         const url = result?.images?.[0]?.url;
-        if (url) imageUrls = [url];
+        if (url) {
+          variations.push({ imageUrl: url, bgImageUrl: url, model: "FLUX Pro" });
+          logUsage(clientName, "generate", "fal-ai/flux-pro/v1.1");
+        }
       } catch {
         return NextResponse.json({ error: "All image generation models failed." }, { status: 500 });
       }
     }
 
-    logUsage(clientName, "generate", modelKey === "recraft_v3" ? "fal-ai/recraft-v3" : "fal-ai/nano-banana-pro");
+    if (variations.length === 0) {
+      return NextResponse.json({ error: "Failed to generate any images." }, { status: 500 });
+    }
 
-    // Build variations array
-    const variations = imageUrls.map(url => ({
-      imageUrl: url,
-      bgImageUrl: url,
-    }));
+    console.log(`Generated ${variations.length} variations: ${variations.map(v => v.model).join(", ")}`);
 
     return NextResponse.json({
       imageUrl: variations[0].imageUrl,
@@ -179,8 +204,8 @@ Reference Image Provided: ${hasImage ? "Yes — user uploaded an image." : "No"}
         scrim_style: "full_overlay",
         decorative: "none",
       },
-      modelUsed: modelKey,
-      variations,
+      modelUsed: variations[0].model,
+      variations: variations.map(v => ({ imageUrl: v.imageUrl, bgImageUrl: v.bgImageUrl })),
     });
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);

@@ -331,12 +331,15 @@ const DEFAULT_AD_TYPES = [
 
 function buildClientContext(client: ClientData): string {
   const parts = [
-    `=== CLIENT BRAND PROFILE ===`, `BUSINESS: ${client.businessName}`, `CONTACT: ${client.name}`,
+    `=== CLIENT BRAND PROFILE ===`,
+    `BUSINESS: ${client.businessName}`,
+    `CONTACT: ${client.name}`,
     client.brandTone ? `BRAND TONE: ${client.brandTone}` : "",
     client.services ? `SERVICES: ${client.services}` : "",
     client.targetAudience ? `TARGET AUDIENCE: ${client.targetAudience}` : "",
     client.objections && client.objections.toLowerCase() !== "idk" ? `OBJECTIONS: ${client.objections}` : "",
-    `=== Match this client's specialty and tone. ===`,
+    client.logoUrl ? `LOGO: The client has a logo. When appropriate (authority positioning, practice branding, professional ads), include a small clinic logo or branding mark in the bottom corner of the ad. The logo style is: clean, professional, should be subtle — not dominant. Reference: "${client.businessName}" branding. Do NOT attempt to reproduce the exact logo — instead, include a small, elegant text-based brand mark or monogram using the clinic's initials.` : "",
+    `=== Match this client's specialty, tone, and branding. ===`,
     client.onboardingDoc ? `\n=== ONBOARDING DOC ===\n${client.onboardingDoc}` : "",
   ];
   return parts.filter(Boolean).join("\n");
