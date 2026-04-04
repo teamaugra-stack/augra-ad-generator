@@ -3,7 +3,7 @@ import { Resvg } from "@resvg/resvg-js";
 import sharp from "sharp";
 import { readFileSync } from "fs";
 import { join } from "path";
-import type { AdCopyData, AdLayout } from "@/types/chat";
+import type { AdCopyData, AdLayout, TypographyDesign, TypographySegment } from "@/types/chat";
 
 // Load fonts at module level
 const interBold = readFileSync(join(process.cwd(), "public", "fonts", "Inter-Bold-Static.woff"));
@@ -11,6 +11,12 @@ const interRegular = readFileSync(join(process.cwd(), "public", "fonts", "Inter-
 const playfairBold = readFileSync(join(process.cwd(), "public", "fonts", "Playfair-Bold.woff"));
 const playfairRegular = readFileSync(join(process.cwd(), "public", "fonts", "Playfair-Regular.woff"));
 const playfairItalic = readFileSync(join(process.cwd(), "public", "fonts", "Playfair-Italic.woff"));
+const bebasNeueRegular = readFileSync(join(process.cwd(), "public", "fonts", "BebasNeue-Regular.woff"));
+const dancingScriptBold = readFileSync(join(process.cwd(), "public", "fonts", "DancingScript-Bold.woff"));
+const outfitBold = readFileSync(join(process.cwd(), "public", "fonts", "Outfit-Bold.woff"));
+const outfitRegular = readFileSync(join(process.cwd(), "public", "fonts", "Outfit-Regular.woff"));
+const robotoSlabBold = readFileSync(join(process.cwd(), "public", "fonts", "RobotoSlab-Bold.woff"));
+const oswaldBold = readFileSync(join(process.cwd(), "public", "fonts", "Oswald-Bold.woff"));
 
 const FONTS = [
   { name: "Inter", data: interBold, weight: 700 as const, style: "normal" as const },
@@ -18,6 +24,12 @@ const FONTS = [
   { name: "Playfair", data: playfairBold, weight: 700 as const, style: "normal" as const },
   { name: "Playfair", data: playfairRegular, weight: 400 as const, style: "normal" as const },
   { name: "Playfair", data: playfairItalic, weight: 400 as const, style: "italic" as const },
+  { name: "BebasNeue", data: bebasNeueRegular, weight: 400 as const, style: "normal" as const },
+  { name: "DancingScript", data: dancingScriptBold, weight: 700 as const, style: "normal" as const },
+  { name: "Outfit", data: outfitBold, weight: 700 as const, style: "normal" as const },
+  { name: "Outfit", data: outfitRegular, weight: 400 as const, style: "normal" as const },
+  { name: "RobotoSlab", data: robotoSlabBold, weight: 700 as const, style: "normal" as const },
+  { name: "Oswald", data: oswaldBold, weight: 700 as const, style: "normal" as const },
 ];
 
 export const FORMAT_TO_DIMENSIONS: Record<string, { width: number; height: number }> = {
@@ -343,5 +355,435 @@ export async function compositeAdImage(
   return {
     composited: `data:image/png;base64,${result.toString("base64")}`,
     bgUrl: bgSource,
+  };
+}
+
+// ===== V2 TYPOGRAPHY-BASED RENDERING =====
+
+function applyTextTransform(text: string, transform: string): string {
+  if (transform === "uppercase") return text.toUpperCase();
+  if (transform === "lowercase") return text.toLowerCase();
+  return text;
+}
+
+export function buildHeadlineSegments(
+  segments: TypographySegment[],
+  w: number
+): Record<string, unknown> {
+  const baseFontSize = scale(50, w);
+  const headShadow = "0 2px 12px rgba(0,0,0,0.9), 0 4px 30px rgba(0,0,0,0.6)";
+
+  const children = segments.map((seg) => ({
+    type: "div",
+    props: {
+      style: {
+        display: "flex",
+        fontFamily: seg.font_family,
+        fontWeight: seg.font_weight,
+        fontStyle: seg.font_style,
+        fontSize: Math.round(baseFontSize * seg.font_size_factor),
+        color: seg.color,
+        letterSpacing: seg.letter_spacing,
+        lineHeight: 1.1,
+        textShadow: headShadow,
+        marginRight: scale(8, w),
+      },
+      children: applyTextTransform(seg.text, seg.text_transform),
+    },
+  }));
+
+  return {
+    type: "div",
+    props: {
+      style: {
+        display: "flex",
+        flexWrap: "wrap",
+        alignItems: "baseline",
+        gap: `${scale(4, w)}px`,
+      },
+      children,
+    },
+  };
+}
+
+export function buildTypographyLayout(
+  typography: TypographyDesign,
+  w: number,
+  h: number
+): Record<string, unknown> {
+  const pad = scale(44, w);
+  const subFontSize = scale(typography.subheadline.font_size || 17, w);
+  const ctaFontSize = scale(14, w);
+  const headShadow = "0 2px 12px rgba(0,0,0,0.9), 0 4px 30px rgba(0,0,0,0.6)";
+  const subShadow = "0 1px 8px rgba(0,0,0,0.8), 0 3px 20px rgba(0,0,0,0.5)";
+
+  // ===== SCRIM =====
+  const defaultScrims: Record<string, string> = {
+    top_gradient: `linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 30%, rgba(0,0,0,0.15) 50%, transparent 65%, transparent 75%, rgba(0,0,0,0.3) 90%, rgba(0,0,0,0.7) 100%)`,
+    bottom_gradient: `linear-gradient(0deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 30%, rgba(0,0,0,0.15) 50%, transparent 65%, transparent 80%, rgba(0,0,0,0.2) 95%, rgba(0,0,0,0.5) 100%)`,
+    full_overlay: `linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.35) 35%, rgba(0,0,0,0.35) 65%, rgba(0,0,0,0.75) 100%)`,
+    left_gradient: `linear-gradient(90deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 30%, rgba(0,0,0,0.15) 55%, transparent 75%)`,
+    vignette: `radial-gradient(ellipse at center, rgba(0,0,0,0.1) 20%, rgba(0,0,0,0.65) 100%)`,
+    none: "transparent",
+  };
+  const scrimBg = defaultScrims[typography.scrim_style] || typography.scrim_style || defaultScrims.full_overlay;
+
+  // ===== HEADLINE =====
+  const headlineEl = buildHeadlineSegments(typography.headline_segments, w);
+
+  // ===== SUBHEADLINE =====
+  const subEl = {
+    type: "div",
+    props: {
+      style: {
+        display: "flex",
+        fontSize: subFontSize,
+        fontWeight: typography.subheadline.font_weight,
+        color: typography.subheadline.color,
+        fontFamily: typography.subheadline.font_family,
+        lineHeight: 1.5,
+        textShadow: subShadow,
+      },
+      children: truncate(typography.subheadline.text, 200),
+    },
+  };
+
+  // ===== CTA =====
+  const ctaStyles: Record<string, Record<string, unknown>> = {
+    pill_white: { background: "white", color: "#0a0a0a", borderRadius: 999, padding: `${scale(12, w)}px ${scale(36, w)}px`, fontWeight: 700, fontSize: ctaFontSize, letterSpacing: "1.5px", fontFamily: typography.cta.font_family },
+    pill_dark: { background: "rgba(0,0,0,0.7)", color: "white", border: `1px solid ${typography.accent_color}`, borderRadius: 999, padding: `${scale(12, w)}px ${scale(36, w)}px`, fontWeight: 700, fontSize: ctaFontSize, letterSpacing: "1.5px", fontFamily: typography.cta.font_family },
+    outline: { background: "transparent", color: "white", border: "2px solid white", borderRadius: 4, padding: `${scale(12, w)}px ${scale(36, w)}px`, fontWeight: 700, fontSize: ctaFontSize, letterSpacing: "1.5px", fontFamily: typography.cta.font_family },
+    underline: { background: "transparent", color: "white", borderBottom: `2px solid ${typography.accent_color}`, padding: `${scale(8, w)}px 0`, fontWeight: 700, fontSize: ctaFontSize, letterSpacing: "1px", fontFamily: typography.cta.font_family },
+    none: { display: "none" },
+  };
+  const ctaEl = typography.cta.text ? {
+    type: "div",
+    props: {
+      style: { display: "flex", ...ctaStyles[typography.cta.style] || ctaStyles.pill_white },
+      children: typography.cta.text,
+    },
+  } : null;
+
+  // ===== OFFER BADGE =====
+  const offerEl = typography.offer ? {
+    type: "div",
+    props: {
+      style: {
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: `${scale(10, w)}px ${scale(24, w)}px`,
+        background: typography.offer.background,
+        border: `1px solid ${typography.accent_color}60`,
+        borderRadius: scale(10, w),
+        fontSize: scale(18, w), fontWeight: 700, color: typography.offer.color,
+        letterSpacing: "0.5px", fontFamily: "Inter",
+        textShadow: headShadow,
+      },
+      children: typography.offer.text.toUpperCase(),
+    },
+  } : null;
+
+  // ===== TEXT GROUP =====
+  const alignMap: Record<string, string> = {
+    left: "flex-start",
+    center: "center",
+    right: "flex-end",
+  };
+  const flexAlign = alignMap[typography.text_alignment] || "flex-start";
+
+  const textGroup = {
+    type: "div",
+    props: {
+      style: { display: "flex", flexDirection: "column", alignItems: flexAlign, gap: scale(10, w), maxWidth: "90%" },
+      children: [headlineEl, subEl],
+    },
+  };
+
+  const ctaGroup = {
+    type: "div",
+    props: {
+      style: { display: "flex", flexDirection: "column", alignItems: flexAlign, gap: scale(14, w) },
+      children: [offerEl, ctaEl].filter(Boolean),
+    },
+  };
+
+  const spacer = { type: "div", props: { style: { flex: 1 }, children: "" } };
+
+  // ===== POSITION-BASED LAYOUT =====
+  let content: Record<string, unknown>;
+
+  switch (typography.text_position) {
+    case "top-left":
+      content = {
+        type: "div",
+        props: {
+          style: { display: "flex", flexDirection: "column", width: "100%", height: "100%", padding: `${pad}px`, textAlign: "left" },
+          children: [textGroup, spacer, ctaGroup],
+        },
+      };
+      break;
+
+    case "top-center":
+      content = {
+        type: "div",
+        props: {
+          style: { display: "flex", flexDirection: "column", width: "100%", height: "100%", alignItems: "center", padding: `${pad}px`, textAlign: "center" },
+          children: [textGroup, spacer, ctaGroup],
+        },
+      };
+      break;
+
+    case "center":
+      content = {
+        type: "div",
+        props: {
+          style: { display: "flex", flexDirection: "column", width: "100%", height: "100%", alignItems: "center", justifyContent: "center", textAlign: "center", padding: `${pad}px`, gap: scale(20, w) },
+          children: [textGroup, ctaGroup],
+        },
+      };
+      break;
+
+    case "bottom-left":
+      content = {
+        type: "div",
+        props: {
+          style: { display: "flex", flexDirection: "column", width: "100%", height: "100%", justifyContent: "flex-end", padding: `${pad}px`, gap: scale(16, w) },
+          children: [textGroup, ctaGroup],
+        },
+      };
+      break;
+
+    case "bottom-center":
+      content = {
+        type: "div",
+        props: {
+          style: { display: "flex", flexDirection: "column", width: "100%", height: "100%", justifyContent: "flex-end", alignItems: "center", textAlign: "center", padding: `${pad}px`, gap: scale(16, w) },
+          children: [textGroup, ctaGroup],
+        },
+      };
+      break;
+
+    case "left-strip":
+      content = {
+        type: "div",
+        props: {
+          style: { display: "flex", flexDirection: "column", width: "45%", height: "100%", justifyContent: "center", padding: `${pad}px`, gap: scale(20, w) },
+          children: [textGroup, ctaGroup],
+        },
+      };
+      break;
+
+    case "right-strip":
+      content = {
+        type: "div",
+        props: {
+          style: { display: "flex", flexDirection: "column", width: "100%", height: "100%", alignItems: "flex-end", justifyContent: "center", padding: `${pad}px`, gap: scale(20, w) },
+          children: [{
+            type: "div",
+            props: {
+              style: { display: "flex", flexDirection: "column", width: "45%", alignItems: "flex-start", gap: scale(20, w) },
+              children: [textGroup, ctaGroup],
+            },
+          }],
+        },
+      };
+      break;
+
+    case "split-top-bottom":
+      content = {
+        type: "div",
+        props: {
+          style: { display: "flex", flexDirection: "column", width: "100%", height: "100%", padding: `${pad}px`, alignItems: "center", textAlign: "center" },
+          children: [textGroup, spacer, ctaGroup],
+        },
+      };
+      break;
+
+    default:
+      // Fallback to top-left
+      content = {
+        type: "div",
+        props: {
+          style: { display: "flex", flexDirection: "column", width: "100%", height: "100%", padding: `${pad}px`, textAlign: "left" },
+          children: [textGroup, spacer, ctaGroup],
+        },
+      };
+      break;
+  }
+
+  // ===== DECORATIVE ELEMENTS =====
+  const decoratives: Record<string, unknown>[] = [];
+
+  if (typography.decorative === "border_frame") {
+    decoratives.push({
+      type: "div",
+      props: {
+        style: { position: "absolute", top: scale(24, w), left: scale(24, w), right: scale(24, w), bottom: scale(24, w), border: `1px solid ${typography.accent_color}40`, borderRadius: 4 },
+        children: "",
+      },
+    });
+  }
+
+  if (typography.decorative === "corner_marks") {
+    const s = scale(24, w);
+    const cs = scale(20, w);
+    const positions = [
+      { top: s, left: s, borderTop: `2px solid ${typography.accent_color}`, borderLeft: `2px solid ${typography.accent_color}` },
+      { top: s, right: s, borderTop: `2px solid ${typography.accent_color}`, borderRight: `2px solid ${typography.accent_color}` },
+      { bottom: s, left: s, borderBottom: `2px solid ${typography.accent_color}`, borderLeft: `2px solid ${typography.accent_color}` },
+      { bottom: s, right: s, borderBottom: `2px solid ${typography.accent_color}`, borderRight: `2px solid ${typography.accent_color}` },
+    ];
+    positions.forEach((pos) => {
+      decoratives.push({ type: "div", props: { style: { position: "absolute", width: cs, height: cs, ...pos }, children: "" } });
+    });
+  }
+
+  if (typography.decorative === "line_accent") {
+    decoratives.push({
+      type: "div",
+      props: { style: { position: "absolute", top: pad, left: pad, width: scale(50, w), height: 3, background: typography.accent_color, borderRadius: 2 }, children: "" },
+    });
+  }
+
+  // ===== ROOT =====
+  return {
+    type: "div",
+    props: {
+      style: { display: "flex", flexDirection: "column", width: "100%", height: "100%", position: "relative" },
+      children: [
+        { type: "div", props: { style: { position: "absolute", top: 0, left: 0, width: w, height: h, background: scrimBg }, children: "" } },
+        content,
+        ...decoratives,
+      ],
+    },
+  };
+}
+
+export async function renderTypographyOverlay(
+  typography: TypographyDesign,
+  dimensions: { width: number; height: number }
+): Promise<Buffer> {
+  const { width, height } = dimensions;
+  const element = buildTypographyLayout(typography, width, height);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const svg = await satori(element as any, { width, height, fonts: FONTS });
+  const resvg = new Resvg(svg, {
+    fitTo: { mode: "width" as const, value: width },
+    background: "rgba(0,0,0,0)",
+  });
+  return Buffer.from(resvg.render().asPng());
+}
+
+export async function compositeAdImageV2(
+  bgSource: string,
+  typography: TypographyDesign,
+  outputFormat: string
+): Promise<{ composited: string; bgUrl: string }> {
+  const dimensions = FORMAT_TO_DIMENSIONS[outputFormat] || { width: 1024, height: 1024 };
+
+  const textPng = await renderTypographyOverlay(typography, dimensions);
+
+  const bgResponse = await fetch(bgSource);
+  const bgBuffer = Buffer.from(await bgResponse.arrayBuffer());
+
+  const result = await sharp(bgBuffer)
+    .resize(dimensions.width, dimensions.height, { fit: "cover" })
+    .composite([{ input: textPng, top: 0, left: 0, blend: "over" }])
+    .png()
+    .toBuffer();
+
+  return {
+    composited: `data:image/png;base64,${result.toString("base64")}`,
+    bgUrl: bgSource,
+  };
+}
+
+export function convertTypographyToLegacyLayout(typography: TypographyDesign): AdLayout {
+  // Map text_position to legacy headline_position
+  const positionMap: Record<string, AdLayout["headline_position"]> = {
+    "top-left": "top-left",
+    "top-center": "top-center",
+    "center": "center",
+    "bottom-left": "bottom-left",
+    "bottom-center": "bottom-center",
+    "left-strip": "center",
+    "right-strip": "center",
+    "split-top-bottom": "top-center",
+  };
+
+  // Map text_position to legacy style
+  const styleMap: Record<string, AdLayout["style"]> = {
+    "top-left": "editorial_top",
+    "top-center": "editorial_top",
+    "center": "centered_hero",
+    "bottom-left": "bottom_heavy",
+    "bottom-center": "bottom_heavy",
+    "left-strip": "split_left",
+    "right-strip": "split_right",
+    "split-top-bottom": "full_overlay",
+  };
+
+  // Determine headline_size from average font_size_factor
+  const avgFactor = typography.headline_segments.length > 0
+    ? typography.headline_segments.reduce((sum, s) => sum + s.font_size_factor, 0) / typography.headline_segments.length
+    : 1.0;
+  let headlineSize: AdLayout["headline_size"] = "3xl";
+  if (avgFactor >= 1.8) headlineSize = "4xl";
+  else if (avgFactor >= 1.3) headlineSize = "3xl";
+  else if (avgFactor >= 0.9) headlineSize = "2xl";
+  else headlineSize = "xl";
+
+  // Determine headline_style from the first segment
+  const firstSeg = typography.headline_segments[0];
+  let headlineStyle: AdLayout["headline_style"] = "mixed";
+  if (firstSeg) {
+    if (firstSeg.font_style === "italic") headlineStyle = "italic";
+    else if (firstSeg.text_transform === "uppercase") headlineStyle = "uppercase";
+    else headlineStyle = "mixed";
+  }
+
+  // Map scrim_style to legacy values
+  const legacyScrims: Record<string, AdLayout["scrim_style"]> = {
+    top_gradient: "top_gradient",
+    bottom_gradient: "bottom_gradient",
+    full_overlay: "full_overlay",
+    left_gradient: "left_gradient",
+    vignette: "vignette",
+    none: "none",
+  };
+  const scrimStyle = legacyScrims[typography.scrim_style] || "full_overlay";
+
+  // Map decorative
+  const legacyDecoratives: Record<string, AdLayout["decorative"]> = {
+    none: "none",
+    line_accent: "line_accent",
+    border_frame: "border_frame",
+    corner_marks: "corner_marks",
+  };
+
+  // Map CTA position from text_position
+  const ctaPositionMap: Record<string, AdLayout["cta_position"]> = {
+    "top-left": "bottom-left",
+    "top-center": "bottom-center",
+    "center": "bottom-center",
+    "bottom-left": "bottom-left",
+    "bottom-center": "bottom-center",
+    "left-strip": "bottom-left",
+    "right-strip": "bottom-right",
+    "split-top-bottom": "bottom-center",
+  };
+
+  return {
+    style: styleMap[typography.text_position] || "editorial_top",
+    headline_position: positionMap[typography.text_position] || "top-left",
+    headline_size: headlineSize,
+    headline_color: firstSeg?.color || "#FFFFFF",
+    headline_style: headlineStyle,
+    subheadline_color: typography.subheadline.color,
+    cta_style: typography.cta.style === "none" ? "pill_white" : typography.cta.style as AdLayout["cta_style"],
+    cta_position: ctaPositionMap[typography.text_position] || "bottom-center",
+    accent_color: typography.accent_color,
+    scrim_style: scrimStyle,
+    decorative: legacyDecoratives[typography.decorative] || "none",
   };
 }
